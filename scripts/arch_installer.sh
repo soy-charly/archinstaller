@@ -1,128 +1,93 @@
 #!/bin/bash
-set -e  # Detener el script si hay errores
 
-echo "🚀 Bienvenido a la instalación de Arch Linux con Hyprland"
-echo "🔹 Este script te guiará en la configuración inicial."
-echo ""
+set -e
 
-# Verificar si se ejecuta como root
-if [ "$EUID" -ne 0 ]; then
-    echo "⚠️ Este script debe ejecutarse como root. Usa sudo."
+# Prompt for disk selection
+echo "Available disks:"
+lsblk -d -n -o NAME,SIZE
+read -p "Enter the disk to install Arch Linux (e.g., /dev/sdX): " DISK
+
+# Show available partitions
+echo "Available partitions on $DISK:"
+lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT "$DISK"
+
+# Prompt for boot and root partitions
+read -p "Enter the partition for /boot (e.g., /dev/sdX1): " BOOT_PARTITION
+read -p "Enter the partition for / (root) (e.g., /dev/sdX2): " ROOT_PARTITION
+
+# Confirm selection
+echo "Selected boot partition: $BOOT_PARTITION"
+echo "Selected root partition: $ROOT_PARTITION"
+read -p "Are you sure? This will erase all data on these partitions (y/N): " CONFIRM
+if [[ "$CONFIRM" != "y" ]]; then
+    echo "Installation cancelled."
     exit 1
 fi
 
-# Selección de disco para instalación
-lsblk
-read -p "❓ Ingresa el disco donde se instalará el sistema (ejemplo: sda): " DISK
+# Formatting partitions
+echo "Formatting partitions..."
+mkfs.fat -F32 "$BOOT_PARTITION"
+mkfs.ext4 "$ROOT_PARTITION"
 
-# Confirmación antes de formatear
-read -p "⚠️ Se formateará $DISK. ¿Estás seguro? (y/n): " confirm_disk
-if [[ "$confirm_disk" != "y" ]]; then
-    echo "❌ Instalación cancelada."
-    exit 1
-fi
-
-echo "🚀 Creando particiones en /dev/$DISK..."
-(
-    echo g # Crear nueva tabla GPT
-    echo n # Nueva partición para Boot
-    echo 1 # Número de partición
-    echo   # Inicio automático
-    echo +512M # Tamaño
-    echo t # Cambiar tipo
-    echo 1 # Tipo EFI
-
-    echo n # Nueva partición para Root
-    echo 2
-    echo   
-    echo +20G
-
-    echo n # Nueva partición para Home
-    echo 3
-    echo   
-    echo   
-
-    echo w # Guardar cambios
-) | fdisk /dev/$DISK
-
-echo "🚀 Formateando particiones..."
-mkfs.fat -F32 /dev/${DISK}1
-mkfs.ext4 /dev/${DISK}2
-mkfs.ext4 /dev/${DISK}3
-
-echo "🚀 Montando particiones..."
-mount /dev/${DISK}2 /mnt
+# Mounting partitions
+echo "Mounting partitions..."
+mount "$ROOT_PARTITION" /mnt
 mkdir -p /mnt/boot
-mount /dev/${DISK}1 /mnt/boot
-mkdir -p /mnt/home
-mount /dev/${DISK}3 /mnt/home
+mount "$BOOT_PARTITION" /mnt/boot
 
-# Configuración de usuario
-read -p "❓ Ingresa el nombre de usuario: " USERNAME
-read -s -p "🔑 Ingresa la contraseña para $USERNAME: " PASSWORD
-echo
-read -p "❓ ¿Deseas crear el usuario root con contraseña root? (y/n): " create_root
+# Install base system
+echo "Installing base system..."
+pacstrap /mnt base linux linux-firmware nano sudo networkmanager
 
-# Instalación del sistema base
-echo "🚀 Instalando Arch Linux..."
-pacstrap /mnt base linux linux-firmware sudo nano networkmanager
+# Ensure sudo is installed
+echo "Installing sudo..."
+arch-chroot /mnt pacman -Sy --noconfirm sudo
 
-echo "🚀 Generando fstab..."
+echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
-# Configuración dentro de chroot
+# Chroot into the new system
+echo "Entering chroot environment..."
 arch-chroot /mnt /bin/bash <<EOF
-echo "🚀 Configurando el sistema dentro del chroot..."
 
-echo "🚀 Configurando zona horaria..."
-ln -sf /usr/share/zoneinfo/$(curl -s https://ipapi.co/timezone) /etc/localtime
+# Set timezone
+echo "Setting timezone..."
+ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 hwclock --systohc
 
-echo "🚀 Configurando locales..."
-echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-echo "es_ES.UTF-8 UTF-8" >> /etc/locale.gen
+# Localization
+echo "Configuring locale..."
+echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
-echo "🚀 Configurando hostname..."
-echo "archlinux" > /etc/hostname
-echo "127.0.0.1   localhost" >> /etc/hosts
-echo "::1         localhost" >> /etc/hosts
+echo "Enter hostname:"
+read HOSTNAME
+echo "$HOSTNAME" > /etc/hostname
 
-echo "🚀 Habilitando NetworkManager..."
-systemctl enable NetworkManager
+echo "127.0.0.1    localhost" >> /etc/hosts
+echo "::1          localhost" >> /etc/hosts
+echo "127.0.1.1    $HOSTNAME.localdomain $HOSTNAME" >> /etc/hosts
 
-echo "🚀 Creando usuario $USERNAME..."
-useradd -m -G wheel -s /bin/bash $USERNAME
-echo "$USERNAME:$PASSWORD" | chpasswd
+# Set root password
+echo "Setting root password..."
+passwd
 
-echo "🚀 Instalando sudo y configurando permisos..."
+# Create user
+echo "Enter new username:"
+read USERNAME
+useradd -m -G wheel -s /bin/bash "$USERNAME"
+echo "Set password for $USERNAME:"
+passwd "$USERNAME"
+
+echo "Enabling sudo for wheel group..."
 echo "%wheel ALL=(ALL) ALL" > /etc/sudoers.d/wheel
 
-# Configuración del usuario root
-if [[ "$create_root" == "y" ]]; then
-    echo "🚀 Configurando usuario root..."
-    echo "root:root" | chpasswd
-fi
+# Enable essential services
+echo "Enabling NetworkManager..."
+systemctl enable NetworkManager
 
-echo "🚀 Instalación de base completada."
 EOF
 
-# Preguntar si se desea instalar Hyprland y Ly
-read -p "❓ ¿Deseas instalar Hyprland y Ly? (y/n): " install_hyprland
-if [[ "$install_hyprland" == "y" ]]; then
-    echo "🚀 Ejecutando instalación de Hyprland..."
-    arch-chroot /mnt /bin/bash -c "curl -O https://raw.githubusercontent.com/tu-repo/install_hyprland.sh && bash install_hyprland.sh"
-    echo "✅ Hyprland instalado correctamente."
-fi
-
-# Preguntar si se desea instalar las mejoras adicionales
-read -p "❓ ¿Deseas instalar mejoras adicionales? (y/n): " install_extras
-if [[ "$install_extras" == "y" ]]; then
-    echo "🚀 Ejecutando instalación de extras..."
-    arch-chroot /mnt /bin/bash -c "curl -O https://raw.githubusercontent.com/tu-repo/install_extras.sh && bash install_extras.sh"
-    echo "✅ Mejoras adicionales instaladas correctamente."
-fi
-
-echo ""
-echo "🎉 Instalación completada. Reinicia tu sistema y disfruta Arch Linux con Hyprland."
+# Final message
+echo "Installation complete! You can reboot now."
