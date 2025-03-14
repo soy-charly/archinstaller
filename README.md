@@ -20,7 +20,7 @@ This set of scripts allows for the **automatic installation of Arch Linux** with
 
 ### 1️⃣ **Download the scripts**
 ```sh
-git clone https://github.com/your-repo/arch-installer.git
+git clone https://github.com/soy-charly/arch-installer.git
 cd arch-installer
 ```
 
