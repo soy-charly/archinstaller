@@ -31,7 +31,7 @@ chmod +x scripts/*.sh
 
 ### 3️⃣ **Run the main installer**
 ```sh
-sudo ./scripts/install.sh
+sudo ./scripts/install_guide.sh
 ```
 
 This script will:
