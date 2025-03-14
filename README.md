@@ -25,12 +25,12 @@ cd arch-installer
 
 ### 2️⃣ **Make the scripts executable**
 ```sh
-chmod +x *.sh
+chmod +x scripts/*.sh
 ```
 
 ### 3️⃣ **Run the main installer**
 ```sh
-sudo ./arch_installer.sh
+sudo ./scripts/arch_installer.sh
 ```
 
 This script will:
@@ -44,9 +44,10 @@ This script will:
 
 ## 📜 **Script Structure**
 📂 `arch-installer/`  
-├── `arch_installer.sh` → **Main installer**  
-├── `install_hyprland.sh` → **Hyprland and Ly installation**  
-├── `install_extras.sh` → **Additional configurations**  
+├── 📂 `scripts/` → **Folder containing all installation scripts**  
+│   ├── `arch_installer.sh` → **Main installer**  
+│   ├── `install_hyprland.sh` → **Hyprland and Ly installation**  
+│   ├── `install_extras.sh` → **Additional configurations**  
 └── `README.md` → **This guide**  
 
 ---
@@ -56,17 +57,17 @@ If you prefer to run the scripts separately:
 
 1️⃣ **Install Arch Linux**  
 ```sh
-sudo ./arch_installer.sh
+sudo ./scripts/arch_installer.sh
 ```
 
 2️⃣ **Install Hyprland** (optional)  
 ```sh
-arch-chroot /mnt /bin/bash -c "./install_hyprland.sh"
+arch-chroot /mnt /bin/bash -c "./scripts/install_hyprland.sh"
 ```
 
 3️⃣ **Install additional enhancements** (optional)  
 ```sh
-arch-chroot /mnt /bin/bash -c "./install_extras.sh"
+arch-chroot /mnt /bin/bash -c "./scripts/install_extras.sh"
 ```
 
 ---
@@ -80,7 +81,7 @@ arch-chroot /mnt /bin/bash -c "./install_extras.sh"
 
 ## 📝 **Notes**
 - The script **does NOT** ask for confirmation before formatting the disk.
-- To change partition sizes, edit `arch_installer.sh`.
+- To change partition sizes, edit `scripts/arch_installer.sh`.
 - For **bug reports or improvements**, open an **Issue** on the repository.
 
 ---
