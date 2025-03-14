@@ -12,6 +12,7 @@ This set of scripts allows for the **automatic installation of Arch Linux** with
 ✅ Creates a custom user and optionally a `root` account  
 ✅ **Optional installation of Hyprland and Ly**  
 ✅ Additional enhancements available as an option  
+✅ **Formats `/` as EXT4 and `/boot` as FAT32**  
 
 ---
 
@@ -35,7 +36,7 @@ sudo ./scripts/arch_installer.sh
 
 This script will:
 - Ask for the disk to install the system
-- Create and format partitions
+- Create and format partitions (`/` as EXT4, `/boot` as FAT32)
 - Install the base system
 - Configure user and network settings
 - Offer to install Hyprland and additional enhancements
@@ -81,6 +82,8 @@ arch-chroot /mnt /bin/bash -c "./scripts/install_extras.sh"
 
 ## 📝 **Notes**
 - The script **does NOT** ask for confirmation before formatting the disk.
+- The root partition (`/`) is formatted as **EXT4**.
+- The boot partition (`/boot`) is formatted as **FAT32**.
 - To change partition sizes, edit `scripts/arch_installer.sh`.
 - For **bug reports or improvements**, open an **Issue** on the repository.
 
