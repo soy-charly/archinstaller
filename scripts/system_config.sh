@@ -24,7 +24,7 @@ arch-chroot /mnt bash <<EOF
 
     pacman -Sy --noconfirm grub efibootmgr os-prober networkmanager sudo
 
-    grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+    grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=Arch
     grub-mkconfig -o /boot/grub/grub.cfg
 
     systemctl enable NetworkManager
