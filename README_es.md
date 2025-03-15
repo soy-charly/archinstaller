@@ -1,97 +1,60 @@
-# 🏗️ Instalador Automático de Arch Linux con Hyprland
+# 🚀 Instalador de Arch Linux
 
-Este conjunto de scripts permite la instalación automática de **Arch Linux** con **Hyprland** y configuración personalizada, incluyendo la opción de elegir discos, crear usuarios y configurar el sistema base.
+Este es un conjunto de scripts automatizados para instalar Arch Linux con una configuración básica y una opción para instalar Hyprland como entorno de escritorio.
 
-## 📌 **Características**
-✅ Instalación automatizada de **Arch Linux**  
-✅ Creación de particiones en **GPT**  
-✅ Instalación del sistema base con **sudo**, `nano`, y `networkmanager`  
-✅ Configuración de **zona horaria, locales, hostname y red**  
-✅ Creación de usuario personalizado y opcionalmente `root`  
-✅ Instalación opcional de **Hyprland** y **Ly**  
-✅ Posibilidad de añadir mejoras adicionales  
+## 📂 Estructura del Proyecto
 
----
-
-## 🚀 **Uso**
-
-### 1️⃣ **Descargar los scripts**
-```sh
-git clone https://github.com/tu-repo/arch-installer.git
-cd arch-installer
+```bash
+arch-install/
+│── install.sh              # 🏗️ Script principal
+│── partitions.sh           # 🖥️ Selección y formateo de particiones
+│── base_install.sh         # 📦 Instalación del sistema base
+│── system_config.sh        # ⚙️ Configuración dentro de chroot
+│── desktop_install.sh      # 🎨 Instalación opcional de Hyprland y Ly
 ```
 
-### 2️⃣ **Hacer ejecutables los scripts**
-```sh
-chmod +x *.sh
-```
+## ✅ Requisitos
 
-### 3️⃣ **Ejecutar el instalador principal**
-```sh
-sudo ./arch_installer.sh
-```
+- 🌐 Conexión a Internet  
+- 💾 Un disco preparado para la instalación de Arch Linux  
+- 🏗️ Sistema en modo UEFI  
 
-Este script:
-- Pregunta en qué disco instalar el sistema
-- Crea particiones y las formatea
-- Instala el sistema base
-- Configura el usuario y la red
-- Pregunta si deseas instalar Hyprland y extras
+## 🛠️ Instalación
 
----
+1. 🔥 Arranca desde una ISO de Arch Linux en modo Live.  
+2. 🌐 Conéctate a Internet con `ip a` para verificar la red o usa `wifi-menu` si usas Wi-Fi.  
+3. 📥 Instala `git` para poder clonar el repositorio:  
+   ```bash
+   pacman -Sy git
+   ```
+4. 📂 Clona este repositorio:  
+   ```bash
+   git clone https://github.com/tuusuario/arch-install.git
+   cd arch-install
+   ```
+5. 🔑 Da permisos de ejecución a los scripts:  
+   ```bash
+   chmod +x *.sh
+   ```
+6. ▶️ Ejecuta el script principal:  
+   ```bash
+   ./install.sh
+   ```
 
-## 📜 **Estructura de los scripts**
-📂 `arch-installer/`  
-├── `arch_installer.sh` → **Instalador principal**  
-├── `install_hyprland.sh` → **Instalación de Hyprland y Ly**  
-├── `install_extras.sh` → **Configuraciones adicionales**  
-└── `README.md` → **Esta guía**  
+## 🎨 Personalización
 
----
+Puedes modificar cualquiera de los scripts para adaptarlos a tus necesidades, por ejemplo, añadiendo paquetes adicionales en `base_install.sh` o cambiando la configuración de teclado en `system_config.sh`.
 
-## 🔧 **Instalación Manual**
-Si deseas ejecutar los scripts por separado:  
+## 🖥️ Opcional: Instalación de Hyprland y Ly
 
-1️⃣ **Instalar Arch Linux**  
-```sh
-sudo ./arch_installer.sh
-```
+Durante la instalación, se te preguntará si deseas instalar Hyprland y el gestor de inicio Ly. Si eliges "s", se instalarán automáticamente.
 
-2️⃣ **Instalar Hyprland** (opcional)  
-```sh
-arch-chroot /mnt /bin/bash -c "./install_hyprland.sh"
-```
+## ⚠️ Notas
 
-3️⃣ **Instalar mejoras adicionales** (opcional)  
-```sh
-arch-chroot /mnt /bin/bash -c "./install_extras.sh"
-```
+- ⚡ Este script **borrará** los datos de las particiones seleccionadas. ¡Asegúrate de hacer una copia de seguridad de tus datos importantes antes de ejecutarlo!  
+- 📦 La instalación se realiza con `pacstrap` e incluye lo básico: `linux`, `linux-firmware`, `nano`, `sudo`, `grub`, `networkmanager`, etc.  
+- 🎮 Si deseas soporte para NVIDIA u otros controladores, puedes añadir los paquetes en `base_install.sh`.  
 
----
+## 🤝 Contribuciones
 
-## 🛠️ **Requisitos**
-- **Sistema en modo UEFI**
-- **Conexión a Internet**
-- **USB booteable con Arch Linux**
-
----
-
-## 📝 **Notas**
-- El script **NO** pregunta antes de formatear el disco.
-- Si quieres cambiar el tamaño de las particiones, edita `arch_installer.sh`.
-- Para **reporte de errores o mejoras**, abre un **Issue** en el repositorio.
-
----
-
-🎉 **¡Listo! Ahora puedes disfrutar de Arch Linux con Hyprland completamente instalado.** 🚀
-```
-
----
-
-### ✨ **¿Qué incluye este README?**
-✔ **Explicación de qué hace cada script**  
-✔ **Instrucciones claras de instalación**  
-✔ **Ejemplo de estructura de archivos**  
-✔ **Notas y requisitos importantes**  
-
-Si necesitas personalizarlo más, dime y lo ajustamos. 😃
+Si deseas mejorar este script, puedes hacer un fork y enviar un pull request.

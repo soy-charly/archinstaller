@@ -1,93 +1,60 @@
-# 🏗️ Arch Linux Automatic Installer with Hyprland
+# 🚀 Arch Linux Installer
 
-This set of scripts allows for the **automatic installation of Arch Linux** with **Hyprland**, providing options to choose disks, create users, and configure the base system.
+This is a set of automated scripts to install Arch Linux with a basic configuration and an optional installation of Hyprland as a desktop environment.
 
----
+## 📂 Project Structure
 
-## 📌 **Features**
-✅ Fully automated **Arch Linux installation**  
-✅ **GPT partitioning** support  
-✅ Installs **base system**, including `sudo`, `nano`, and `networkmanager`  
-✅ Configures **timezone, locales, hostname, and network**  
-✅ Creates a custom user and optionally a `root` account  
-✅ **Optional installation of Hyprland and Ly**  
-✅ Additional enhancements available as an option  
-✅ **Formats `/` as EXT4 and `/boot` as FAT32**  
-
----
-
-## 🚀 **Usage**
-
-### 1️⃣ **Download the scripts**
-```sh
-git clone https://github.com/soy-charly/arch-installer.git
-cd arch-installer
+```bash
+arch-install/
+│── install.sh              # 🏗️ Main script
+│── partitions.sh           # 🖥️ Partition selection and formatting
+│── base_install.sh         # 📦 Base system installation
+│── system_config.sh        # ⚙️ System configuration inside chroot
+│── desktop_install.sh      # 🎨 Optional installation of Hyprland and Ly
 ```
 
-### 2️⃣ **Make the scripts executable**
-```sh
-chmod +x scripts/*.sh
-```
+## ✅ Requirements
 
-### 3️⃣ **Run the main installer**
-```sh
-sudo ./scripts/install_guide.sh
-```
+- 🌐 Internet connection  
+- 💾 A disk prepared for Arch Linux installation  
+- 🏗️ System running in UEFI mode  
 
-This script will:
-- Ask for the disk to install the system
-- Create and format partitions (`/` as EXT4, `/boot` as FAT32)
-- Install the base system
-- Configure user and network settings
-- Offer to install Hyprland and additional enhancements
+## 🛠️ Installation
 
----
+1. 🔥 Boot from an Arch Linux ISO in Live mode.  
+2. 🌐 Connect to the internet using `ip a` to check network connectivity or `wifi-menu` if using Wi-Fi.  
+3. 📥 Install `git` to clone the repository:  
+   ```bash
+   pacman -Sy git
+   ```
+4. 📂 Clone this repository:  
+   ```bash
+   git clone https://github.com/yourusername/arch-install.git
+   cd arch-install
+   ```
+5. 🔑 Grant execution permissions to the scripts:  
+   ```bash
+   chmod +x *.sh
+   ```
+6. ▶️ Run the main script:  
+   ```bash
+   ./install.sh
+   ```
 
-## 📜 **Script Structure**
-📂 `arch-installer/`  
-├── 📂 `scripts/` → **Folder containing all installation scripts**  
-│   ├── `arch_installer.sh` → **Main installer**  
-│   ├── `install_hyprland.sh` → **Hyprland and Ly installation**  
-│   ├── `install_extras.sh` → **Additional configurations**  
-└── `README.md` → **This guide**  
+## 🎨 Customization
 
----
+You can modify any of the scripts to suit your needs, such as adding additional packages in `base_install.sh` or changing the keyboard configuration in `system_config.sh`.
 
-## 🔧 **Manual Installation**
-If you prefer to run the scripts separately:
+## 🖥️ Optional: Hyprland and Ly Installation
 
-1️⃣ **Install Arch Linux**  
-```sh
-sudo ./scripts/arch_installer.sh
-```
+During the installation process, you will be asked if you want to install Hyprland and the Ly display manager. If you choose "s", they will be installed automatically.
 
-2️⃣ **Install Hyprland** (optional)  
-```sh
-arch-chroot /mnt /bin/bash -c "./scripts/install_hyprland.sh"
-```
+## ⚠️ Notes
 
-3️⃣ **Install additional enhancements** (optional)  
-```sh
-arch-chroot /mnt /bin/bash -c "./scripts/install_extras.sh"
-```
+- ⚡ This script **will erase** the selected partitions. Make sure to back up any important data before running it!  
+- 📦 The installation is performed using `pacstrap` and includes the essentials: `linux`, `linux-firmware`, `nano`, `sudo`, `grub`, `networkmanager`, etc.  
+- 🎮 If you need support for NVIDIA or other drivers, you can add the required packages in `base_install.sh`.  
 
----
+## 🤝 Contributions
 
-## 🛠️ **Requirements**
-- **UEFI system**
-- **Internet connection**
-- **Bootable USB with Arch Linux**
-
----
-
-## 📝 **Notes**
-- The script **does NOT** ask for confirmation before formatting the disk.
-- The root partition (`/`) is formatted as **EXT4**.
-- The boot partition (`/boot`) is formatted as **FAT32**.
-- To change partition sizes, edit `scripts/arch_installer.sh`.
-- For **bug reports or improvements**, open an **Issue** on the repository.
-
----
-
-🎉 **All set! You now have a fully installed Arch Linux system with Hyprland.** 🚀
-
+If you want to improve this script, you can fork the repository and submit a pull request.
