@@ -2,9 +2,13 @@
 
 echo "Configurando el sistema..."
 
+# Obtener la zona horaria automáticamente usando el servicio ipapi.co
+TIMEZONE=$(curl -s https://ipapi.co/timezone)
+
+echo "La zona horaria detectada es: $TIMEZONE"
+
 read -p "Ingrese un nombre para su equipo: " HOSTNAME
 read -p "Ingrese su nombre de usuario: " USERNAME
-read -p "Ingrese su zona horaria (ejemplo: Europe/Madrid): " TIMEZONE
 
 arch-chroot /mnt bash <<EOF
     ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
@@ -26,13 +30,15 @@ arch-chroot /mnt bash <<EOF
     systemctl enable NetworkManager
 
     useradd -m -G wheel -s /bin/bash "$USERNAME"
-    echo "Establezca la contraseña para $USERNAME:"
-    passwd "$USERNAME"
     echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
-
-    read -p "¿Desea establecer una contraseña para root? (s/n): " SET_ROOT
-    if [[ "\$SET_ROOT" =~ ^[Ss]$ ]]; then
-        echo "Establezca la contraseña para root:"
-        passwd
-    fi
 EOF
+
+# Contraseñas fuera de arch-chroot
+echo "Establezca la contraseña para el usuario $USERNAME:"
+arch-chroot /mnt passwd "$USERNAME"
+
+read -p "¿Desea establecer una contraseña para root? (s/n): " SET_ROOT
+if [[ "$SET_ROOT" =~ ^[Ss]$ ]]; then
+    echo "Establezca la contraseña para root:"
+    arch-chroot /mnt passwd
+fi
