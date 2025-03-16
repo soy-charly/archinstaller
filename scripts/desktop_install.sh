@@ -19,6 +19,6 @@ if [[ "$INSTALL_HYPR" =~ ^[Ss]$ ]]; then
             ;;
     esac
 
-    arch-chroot /mnt pacman -S --noconfirm hyprland ly nano kitty waybar rofi dunst alacritty grim slurp xdg-desktop-portal-hyprland xdg-user-dirs polkit-kde-agent firefox dolphin git "$GPU_PACKAGE"
+    arch-chroot /mnt pacman -S --noconfirm hyprland ly nano kitty waybar rofi dunst alacritty grim slurp xdg-desktop-portal-hyprland xdg-user-dirs polkit-kde-agent firefox dolphin "$GPU_PACKAGE"
     arch-chroot /mnt systemctl enable ly
 fi

@@ -22,7 +22,7 @@ arch-chroot /mnt bash <<EOF
     echo "::1          localhost" >> /etc/hosts
     echo "127.0.1.1    $HOSTNAME.localdomain $HOSTNAME" >> /etc/hosts
 
-    pacman -Sy --noconfirm grub efibootmgr os-prober networkmanager sudo
+    pacman -Sy --noconfirm grub efibootmgr os-prober networkmanager sudo git
 
     grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=Arch
     grub-mkconfig -o /boot/grub/grub.cfg
