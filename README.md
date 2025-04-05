@@ -29,7 +29,7 @@ arch-install/
    ```
 4. 📂 Clone this repository:  
    ```bash
-   git clone https://github.com/yourusername/arch-install.git
+   git clone https://github.com/soy-charly/archinstaller.git
    cd arch-install
    ```
 5. 🔑 Grant execution permissions to the scripts:  
