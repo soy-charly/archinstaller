@@ -26,8 +26,8 @@ Scripts modulares para instalar Arch Linux con configuración interactiva. Ideal
 ```bash
 # Desde el Live Environment de Arch Linux:
 pacman -Sy --noconfirm git
-git clone https://github.com/tuusuario/arch-installer.git
-cd arch-installer
+git clone https://github.com/soy-charly/archinstaller.git
+cd archinstaller
 chmod +x main.sh *.sh chroot_scripts/*.sh
 ./main.sh
 ```
@@ -36,7 +36,7 @@ chmod +x main.sh *.sh chroot_scripts/*.sh
 ```bash
 # Desde el Live Environment:
 pacman -Sy --noconfirm curl
-curl -L https://raw.githubusercontent.com/tuusuario/arch-installer/main/main.sh -o main.sh
+curl -L https://raw.githubusercontent.com/soy-charly/archinstaller/main/main.sh -o main.sh
 chmod +x main.sh
 ./main.sh
 ```
@@ -62,19 +62,19 @@ chmod +x main.sh
 
 ## Estructura del Proyecto
 ```
-arch-installer/
-├── main.sh                       # Script principal
-├── functions.sh                  # Funciones comunes
-├── 1_partitions.sh               # Particionado y montaje
-├── 2_base_install.sh             # Sistema base
-├── chroot_scripts/               # Configuraciones en chroot
-│   ├── 3_timezone.sh             # Zona horaria automática
-│   ├── 4_localization.sh         # Idioma y teclado
-│   ├── 5_bootloader.sh           # Instalación de GRUB
-│   ├── 6_user.sh                 # Creación de usuario
-│   ├── 7_desktop.sh              # Entornos de escritorio
-│   └── 8_final.sh                # Toques finales
-└── README.md                     # Este archivo
+archinstaller/
+├── main.sh               # Script principal
+├── functions.sh          # Funciones comunes
+├── 1_partitions.sh       # Particionado y montaje
+├── 2_base_install.sh     # Sistema base
+├── chroot_scripts/       # Configuraciones en chroot
+│   ├── 3_timezone.sh     # Zona horaria automática
+│   ├── 4_localization.sh # Idioma y teclado
+│   ├── 5_bootloader.sh   # Instalación de GRUB
+│   ├── 6_user.sh         # Creación de usuario
+│   ├── 7_desktop.sh      # Entornos de escritorio
+│   └── 8_final.sh        # Toques finales
+└── README.md             # Este archivo
 ```
 
 ## Personalización
@@ -102,7 +102,7 @@ Añade en `chroot_scripts/8_final.sh`:
    git checkout -b mi-mejora
    ```
 3. Realiza tus cambios
-4. Envía un Pull Request
+4. Envía un Pull Request a [https://github.com/soy-charly/archinstaller](https://github.com/soy-charly/archinstaller)
 
 ## Licencia
 MIT License - Ver [LICENSE](LICENSE)
@@ -111,5 +111,4 @@ MIT License - Ver [LICENSE](LICENSE)
 ⚠️ **ADVERTENCIA**: Este script formateará tus discos  
 🔧 Recomendado probar primero en máquina virtual  
 📶 Asegurar conexión a Internet antes de ejecutar  
-💾 Respalda tus datos importantes antes de continuar  
-🔒 Este script no es responsable de la pérdida de datos
+💾 Respalda tus datos importantes antes de continuar
