@@ -1,96 +1,115 @@
+# Arch Linux Installer Scripts
 
-# ArchInstaller
+![Arch Linux Logo](https://archlinux.org/static/logos/archlinux-logo-dark-1200dpi.b42bd35d5916.png)
 
-ArchInstaller is a Bash script that automates the installation and initial configuration of Arch Linux. It is designed to simplify the installation process, allowing users to customize their system according to their needs.
+Scripts modulares para instalar Arch Linux con configuración interactiva. Ideal para instalaciones rápidas y personalizadas.
 
-## Features
+## Características Principales
+- ✔️ Selección interactiva de particiones (BOOT/ROOT)
+- 🌍 Configuración automática de zona horaria vía geolocalización
+- ⌨️ Selección de layout de teclado e idioma del sistema
+- 🖥️ Elección de entorno de escritorio (GNOME, KDE, Xfce, LXQt)
+- 👤 Creación automática de usuario con privilegios sudo
+- 🚀 Instalación optimizada con paquetes esenciales
+- ⚙️ Configuración automática de GRUB según sistema (UEFI/BIOS)
 
-- **Complete Automation**: Installs Arch Linux in an automated manner, reducing the time and effort required.
-- **Support for Multiple File Systems**: Automatically detects and configures SSDs and TRIM. Supports file systems such as BFS, Btrfs, ext{2,3,4}, F2FS, JFS, NILFS2, NTFS, ReiserFS, and XFS.
-- **Hardware Compatibility**: Works on PCs (x86 and x86_64) and ARM devices (armv6h and armv7h). Automatically detects and configures hardware, installing the necessary drivers.
-- **Desktop Environments**: Allows automated installation of desktop environments such as Cinnamon, Enlightenment, GNOME, KDE, LXDE, MATE, and XFCE.
-- **Power Management**: Includes configurations for power management using tools like cpupower and TLP.
+## Requisitos
+- Imagen ISO de Arch Linux reciente
+- Conexión a Internet activa
+- Particiones previamente creadas
+- Sistema en modo UEFI o BIOS legado
+- Conocimientos básicos de línea de comandos
 
-## Requirements
+## Uso
 
-- **Internet Connection**: Required to download packages during installation.
-- **Arch Linux Live ISO**: It is recommended to use the latest version of the Arch Linux live ISO image.
+### Opción 1: Clonar repositorio
+```bash
+# Desde el Live Environment de Arch Linux:
+pacman -Sy --noconfirm git
+git clone https://github.com/tuusuario/arch-installer.git
+cd arch-installer
+chmod +x main.sh *.sh chroot_scripts/*.sh
+./main.sh
+```
 
-## Installation
+### Opción 2: Descarga directa vía curl
+```bash
+# Desde el Live Environment:
+pacman -Sy --noconfirm curl
+curl -L https://raw.githubusercontent.com/tuusuario/arch-installer/main/main.sh -o main.sh
+chmod +x main.sh
+./main.sh
+```
 
-1. **Prepare the Environment**:
+## Flujo de Instalación
+1. **Preparación**:
+   - Conexión a Internet
+   - Montaje de particiones
+   - Formateo de dispositivos
 
-  Boot from the Arch Linux Live ISO and configure the network:
+2. **Instalación Base**:
+   - Kernel Linux
+   - Firmwares esenciales
+   - Generación de fstab
 
-  ```bash
-  loadkeys us # Set the keyboard to US layout
-  wifi-menu   # Connect to a Wi-Fi network
-  dhcpcd      # Obtain an IP address
-  ```
+3. **Configuración Chroot**:
+   - Zona horaria automática
+   - Localización e idiomas
+   - Instalación de GRUB
+   - Creación de usuario
+   - Entorno de escritorio
+   - Paquetes adicionales
 
-2. **System Update**:
+## Estructura del Proyecto
+```
+arch-installer/
+├── main.sh                       # Script principal
+├── functions.sh                  # Funciones comunes
+├── 1_partitions.sh               # Particionado y montaje
+├── 2_base_install.sh             # Sistema base
+├── chroot_scripts/               # Configuraciones en chroot
+│   ├── 3_timezone.sh             # Zona horaria automática
+│   ├── 4_localization.sh         # Idioma y teclado
+│   ├── 5_bootloader.sh           # Instalación de GRUB
+│   ├── 6_user.sh                 # Creación de usuario
+│   ├── 7_desktop.sh              # Entornos de escritorio
+│   └── 8_final.sh                # Toques finales
+└── README.md                     # Este archivo
+```
 
-  Update the repositories and install Git:
+## Personalización
+### Entornos de Escritorio
+Edita `chroot_scripts/7_desktop.sh` para:
+- Añadir nuevos entornos
+- Cambiar paquetes instalados
+- Modificar gestores de pantalla
 
-  ```bash
-  pacman -Syy --noconfirm git
-  ```
+### Layouts de Teclado
+Modifica en `chroot_scripts/4_localization.sh`:
+- Listado de layouts soportados
+- Configuraciones regionales
 
-3. **Clone the Repository**:
+### Paquetes Adicionales
+Añade en `chroot_scripts/8_final.sh`:
+- Controladores específicos
+- Herramientas de desarrollo
+- Paquetes personalizados
 
-  Clone the ArchInstaller repository:
+## Contribuciones
+1. Haz fork del repositorio
+2. Crea una rama:
+   ```bash
+   git checkout -b mi-mejora
+   ```
+3. Realiza tus cambios
+4. Envía un Pull Request
 
-  ```bash
-  git clone https://github.com/soy-charly/archinstaller.git
-  cd archinstaller
-  ```
+## Licencia
+MIT License - Ver [LICENSE](LICENSE)
 
-4. **User Configuration**:
-
-  Edit the `users.csv` file to define the users to be created during installation. Use `users.example` as a reference.
-
-5. **Run the Installation Script**:
-
-  Run the installation script with the desired options. For example, for a PC installation:
-
-  ```bash
-  ./arch-install.sh -d sda -p bsrh -w pA55w0rd -n my_host.example.org
-  ```
-
-  For a Raspberry Pi:
-
-  ```bash
-  ./arch-install.sh -w pA55w0rd -n my_host.example.org
-  ```
-
-  Get help on the available options with:
-
-  ```bash
-  ./arch-install.sh -h
-  ```
-
-## Additional Features
-
-- **Hardware Detection**: The script automatically detects the system's hardware and executes the corresponding scripts to configure the necessary drivers.
-- **NFS Cache**: Uses an NFS cache to speed up package downloads if you already have an Arch Linux installation on another machine.
-- **Power Management**: Includes configurations for power management using tools like cpupower and TLP.
-
-## Limitations
-
-- **UEFI**: Currently, the script does not support UEFI systems. It is designed for BIOS systems only.
-- **Partitioning**: Offers simple partitioning options and may not be suitable for more complex disk configurations.
-
-## Contributions
-
-Contributions are welcome. If you want to improve the script or add new features, please follow these guidelines:
-
-1. Fork the repository.
-2. Create a branch for your feature (`git checkout -b feature/new-feature`).
-3. Make your changes and commit them (`git commit -am 'Add new feature'`).
-4. Push your changes to your fork (`git push origin feature/new-feature`).
-5. Create a pull request describing your changes.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
-
+## Notas Importantes
+⚠️ **ADVERTENCIA**: Este script formateará tus discos  
+🔧 Recomendado probar primero en máquina virtual  
+📶 Asegurar conexión a Internet antes de ejecutar  
+💾 Respalda tus datos importantes antes de continuar  
+🔒 Este script no es responsable de la pérdida de datos
