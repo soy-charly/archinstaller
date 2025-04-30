@@ -1,114 +1,88 @@
-# Arch Linux Installer Scripts
+# **Instalación Personalizada de Arch Linux**
 
-![Arch Linux Logo](https://archlinux.org/static/logos/archlinux-logo-dark-1200dpi.b42bd35d5916.png)
+Este proyecto ofrece un conjunto de scripts para realizar una instalación modular y personalizada de Arch Linux desde cero. Permite seleccionar particiones, configurar el sistema, instalar un gestor de arranque y añadir software adicional según las preferencias del usuario.
 
-Scripts modulares para instalar Arch Linux con configuración interactiva. Ideal para instalaciones rápidas y personalizadas.
+## **Estructura del Proyecto**
 
-## Características Principales
-- ✔️ Selección interactiva de particiones (BOOT/ROOT)
-- 🌍 Configuración automática de zona horaria vía geolocalización
-- ⌨️ Selección de layout de teclado e idioma del sistema
-- 🖥️ Elección de entorno de escritorio (GNOME, KDE, Xfce, LXQt)
-- 👤 Creación automática de usuario con privilegios sudo
-- 🚀 Instalación optimizada con paquetes esenciales
-- ⚙️ Configuración automática de GRUB según sistema (UEFI/BIOS)
+El proyecto está organizado en varios scripts, cada uno encargado de una etapa específica de la instalación:
 
-## Requisitos
-- Imagen ISO de Arch Linux reciente
-- Conexión a Internet activa
-- Particiones previamente creadas
-- Sistema en modo UEFI o BIOS legado
-- Conocimientos básicos de línea de comandos
+```
+arch_install/
+├── particionado.sh   # Selección y montaje de particiones
+├── configuracion.sh  # Configuración del sistema (zona horaria, idioma, etc.)
+├── software.sh       # Instalación de software adicional (entorno gráfico, gestor de arranque)
+└── install.sh        # Script principal que orquesta la instalación
+```
 
-## Uso
+### **Descripción de los Scripts**
 
-### Opción 1: Clonar repositorio
+- **`particionado.sh`**: Permite seleccionar y montar las particiones necesarias, como la raíz (`/`) y `/boot`. Verifica la existencia de las particiones antes de montarlas.
+
+- **`configuracion.sh`**: Configura aspectos básicos del sistema, como la zona horaria, el idioma, el nombre del host, la red y las contraseñas de los usuarios. También ofrece la opción de instalar y configurar NetworkManager.
+
+- **`software.sh`**: Facilita la instalación de un gestor de arranque (GRUB o Syslinux) y software adicional, como entornos gráficos (GNOME, KDE, Xfce, i3) o paquetes esenciales.
+
+- **`install.sh`**: Script principal que ejecuta los demás scripts en el orden adecuado. Es el punto de entrada para iniciar la instalación.
+
+## **Requisitos Previos**
+
+- Arch Linux debe estar en modo Live con acceso a un terminal con privilegios `sudo`.
+- Conexión a Internet para descargar paquetes.
+- Conocimientos básicos sobre particionamiento de discos y configuración de sistemas Linux.
+
+## **Instrucciones de Uso**
+
+### 1. **Clonar o Descargar el Proyecto**
+
+Clona este repositorio o descárgalo en tu máquina:
+
 ```bash
-# Desde el Live Environment de Arch Linux:
-pacman -Sy --noconfirm git
-git clone https://github.com/soy-charly/archinstaller.git
-cd archinstaller
-chmod +x main.sh *.sh chroot_scripts/*.sh
-./main.sh
+git clone https://github.com/tu_usuario/arch_install.git
+cd arch_install
 ```
 
-### Opción 2: Descarga directa vía curl
+### 2. **Hacer los Scripts Ejecutables**
+
+Asegúrate de que los scripts tengan permisos de ejecución:
+
 ```bash
-# Desde el Live Environment:
-pacman -Sy --noconfirm curl
-curl -L https://raw.githubusercontent.com/soy-charly/archinstaller/main/main.sh -o main.sh
-chmod +x main.sh
-./main.sh
+chmod +x particionado.sh configuracion.sh software.sh install.sh
 ```
 
-## Flujo de Instalación
-1. **Preparación**:
-   - Conexión a Internet
-   - Montaje de particiones
-   - Formateo de dispositivos
+### 3. **Ejecutar el Script Principal**
 
-2. **Instalación Base**:
-   - Kernel Linux
-   - Firmwares esenciales
-   - Generación de fstab
+Inicia la instalación ejecutando el script principal:
 
-3. **Configuración Chroot**:
-   - Zona horaria automática
-   - Localización e idiomas
-   - Instalación de GRUB
-   - Creación de usuario
-   - Entorno de escritorio
-   - Paquetes adicionales
-
-## Estructura del Proyecto
-```
-archinstaller/
-├── main.sh               # Script principal
-├── functions.sh          # Funciones comunes
-├── 1_partitions.sh       # Particionado y montaje
-├── 2_base_install.sh     # Sistema base
-├── chroot_scripts/       # Configuraciones en chroot
-│   ├── 3_timezone.sh     # Zona horaria automática
-│   ├── 4_localization.sh # Idioma y teclado
-│   ├── 5_bootloader.sh   # Instalación de GRUB
-│   ├── 6_user.sh         # Creación de usuario
-│   ├── 7_desktop.sh      # Entornos de escritorio
-│   └── 8_final.sh        # Toques finales
-└── README.md             # Este archivo
+```bash
+./install.sh
 ```
 
-## Personalización
-### Entornos de Escritorio
-Edita `chroot_scripts/7_desktop.sh` para:
-- Añadir nuevos entornos
-- Cambiar paquetes instalados
-- Modificar gestores de pantalla
+Este script guiará el proceso completo, incluyendo particionado, configuración del sistema e instalación de software.
 
-### Layouts de Teclado
-Modifica en `chroot_scripts/4_localization.sh`:
-- Listado de layouts soportados
-- Configuraciones regionales
+### 4. **Proceso de Instalación**
 
-### Paquetes Adicionales
-Añade en `chroot_scripts/8_final.sh`:
-- Controladores específicos
-- Herramientas de desarrollo
-- Paquetes personalizados
+El script principal realiza los siguientes pasos:
 
-## Contribuciones
-1. Haz fork del repositorio
-2. Crea una rama:
-   ```bash
-   git checkout -b mi-mejora
-   ```
-3. Realiza tus cambios
-4. Envía un Pull Request a [https://github.com/soy-charly/archinstaller](https://github.com/soy-charly/archinstaller)
+1. **Particionado**: Selección y montaje de las particiones necesarias (`/` y `/boot`).
+2. **Configuración del Sistema**: Configuración de zona horaria, idioma, nombre del host, red y contraseñas.
+3. **Instalación de Software**: Instalación de un gestor de arranque y un entorno gráfico o gestor de ventanas.
 
-## Licencia
-MIT License - Ver [LICENSE](LICENSE)
+### 5. **Reiniciar el Sistema**
 
-## Notas Importantes
-⚠️ **ADVERTENCIA**: Este script formateará tus discos  
-🔧 Recomendado probar primero en máquina virtual  
-📶 Asegurar conexión a Internet antes de ejecutar  
-💾 Respalda tus datos importantes antes de continuar
+Una vez completados todos los pasos, el script indicará que reinicies el sistema.
+
+## **Personalización**
+
+Puedes adaptar los scripts a tus necesidades específicas:
+
+- **Particionado**: Modifica los puntos de montaje o añade más particiones según sea necesario.
+- **Configuración del Sistema**: Agrega configuraciones adicionales, como usuarios, servicios o ajustes de red.
+- **Software Adicional**: Personaliza los paquetes a instalar o añade otros entornos de escritorio.
+
+## **Contribución**
+
+Si deseas mejorar o personalizar estos scripts, realiza un fork del proyecto y envía un pull request con tus cambios. Asegúrate de seguir las mejores prácticas y probar los scripts antes de enviarlos.
+
+## **Licencia**
+
+Este proyecto está bajo la licencia MIT. Consulta el archivo LICENSE en el repositorio para más detalles.
