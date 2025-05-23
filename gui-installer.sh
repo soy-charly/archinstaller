@@ -42,7 +42,10 @@ EOF
 
 print_section() {
     echo -e "\n${COLORS[BLUE]}${COLORS[BOLD]}▶ $1${COLORS[NC]}"
-    echo -e "${COLORS[GRAY]}${'═'*60}${COLORS[NC]}"
+    # Línea de separación: 60 veces '═'
+    local sep
+    sep=$(printf '═%.0s' {1..60})
+    echo -e "${COLORS[GRAY]}$sep${COLORS[NC]}"
 }
 
 print_option() {
@@ -440,7 +443,14 @@ install_selected_desktops() {
     
     # Configurar display manager
     if [ ${#display_managers[@]} -gt 0 ]; then
-        setup_display_manager "${display_managers[0]}"
+        print_section "CONFIGURANDO DISPLAY MANAGER"
+        for dm in "${display_managers[@]}"; do
+            print_info "Habilitando servicio: $dm"
+            sudo systemctl enable "$dm" >> "$INSTALL_LOG" 2>&1
+        done
+        print_success "Display managers habilitados"
+    else
+        print_warning "No se configuró ningún Display Manager"
     fi
     
     print_success "Todos los escritorios instalados correctamente"
@@ -448,6 +458,8 @@ install_selected_desktops() {
 
 # Configuración específica para i3
 setup_i3_config() {
+    print_info "Configurando entorno para i3..."
+    sudo pacman -S --needed --noconfirm termite rofi feh picom >> "$INSTALL_LOG" 2>&1
     mkdir -p ~/.config/i3
     cat > ~/.config/i3/config << 'EOF'
 # i3 config file
@@ -503,100 +515,20 @@ EOF
 
 # Configuración específica para Bspwm
 setup_bspwm_config() {
+    print_info "Configurando entorno para bspwm..."
+    sudo pacman -S --needed --noconfirm sxhkd rofi feh picom >> "$INSTALL_LOG" 2>&1
     mkdir -p ~/.config/bspwm ~/.config/sxhkd
-    
-    cat > ~/.config/bspwm/bspwmrc << 'EOF'
-#!/bin/sh
-sxhkd &
-bspc monitor -d I II III IV V
-bspc config border_width         2
-bspc config window_gap          12
-bspc config split_ratio          0.52
-bspc config borderless_monocle   true
-bspc config gapless_monocle      true
-EOF
-    
-    cat > ~/.config/sxhkd/sxhkdrc << 'EOF'
-super + Return
-    alacritty
-
-super + d
-    dmenu_run
-
-super + shift + q
-    bspc node -c
-
-super + shift + e
-    bspc quit
-EOF
-    
+    cp /usr/share/doc/bspwm/examples/bspwmrc ~/.config/bspwm/bspwmrc
+    cp /usr/share/doc/bspwm/examples/sxhkdrc ~/.config/sxhkd/sxhkdrc
     chmod +x ~/.config/bspwm/bspwmrc
 }
 
 # Configuración específica para Qtile
 setup_qtile_config() {
+    print_info "Configurando entorno para Qtile..."
+    sudo pacman -S --needed --noconfirm rofi feh picom >> "$INSTALL_LOG" 2>&1
     mkdir -p ~/.config/qtile
-    cat > ~/.config/qtile/config.py << 'EOF'
-from libqtile import bar, layout, widget
-from libqtile.config import Click, Drag, Group, Key, Match, Screen
-from libqtile.lazy import lazy
-
-mod = "mod4"
-terminal = "alacritty"
-
-keys = [
-    Key([mod], "Return", lazy.spawn(terminal)),
-    Key([mod], "d", lazy.spawn("dmenu_run")),
-    Key([mod, "shift"], "q", lazy.window.kill()),
-    Key([mod, "shift"], "r", lazy.restart()),
-    Key([mod, "shift"], "e", lazy.shutdown()),
-]
-
-groups = [Group(i) for i in "12345"]
-
-for i in groups:
-    keys.extend([
-        Key([mod], i.name, lazy.group[i.name].toscreen()),
-        Key([mod, "shift"], i.name, lazy.window.togroup(i.name)),
-    ])
-
-layouts = [
-    layout.Columns(border_focus_stack=["#d75f5f", "#8f3d3d"], border_width=4),
-    layout.Max(),
-]
-
-screens = [
-    Screen(
-        bottom=bar.Bar([
-            widget.CurrentLayout(),
-            widget.GroupBox(),
-            widget.Prompt(),
-            widget.WindowName(),
-            widget.Systray(),
-            widget.Clock(format="%Y-%m-%d %a %I:%M %p"),
-        ], 24),
-    ),
-]
-EOF
-}
-
-# Configurar display manager
-setup_display_manager() {
-    local dm="$1"
-    
-    print_info "Configurando display manager: $dm"
-    
-    case $dm in
-        gdm)
-            sudo systemctl enable gdm
-            ;;
-        sddm)
-            sudo systemctl enable sddm
-            ;;
-        "lightdm lightdm-gtk-greeter")
-            sudo systemctl enable lightdm
-            ;;
-    esac
+    echo "# Archivo de configuración vacío para Qtile" > ~/.config/qtile/config.py
 }
 
 # Instalación de aplicaciones adicionales
