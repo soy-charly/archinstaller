@@ -1,206 +1,480 @@
 #!/bin/bash
 
-# Script de instalación de interfaces gráficas para Arch Linux
-# Permite instalar múltiples entornos de escritorio y gestores de ventanas
+# Arch Desktop Wizard - Instalador Visual de Escritorios
+# Script interactivo con interfaz mejorada y soporte para múltiples escritorios
 
-set -e
+# Configuración de colores y estilos
+declare -A COLORS=(
+    [RED]='\033[0;31m'
+    [GREEN]='\033[0;32m'
+    [YELLOW]='\033[1;33m'
+    [BLUE]='\033[0;34m'
+    [PURPLE]='\033[0;35m'
+    [CYAN]='\033[0;36m'
+    [WHITE]='\033[1;37m'
+    [GRAY]='\033[0;90m'
+    [NC]='\033[0m'
+    [BOLD]='\033[1m'
+    [DIM]='\033[2m'
+)
 
-# Colores para output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+# Variables globales
+SELECTED_DESKTOPS=()
+SELECTED_DRIVERS=""
+AUDIO_SYSTEM=""
+INSTALL_LOG="/tmp/arch_desktop_install.log"
 
-# Función para imprimir mensajes coloreados
-print_status() { echo -e "${GREEN}[INFO]${NC} $1"; }
-print_warning() { echo -e "${YELLOW}[ADVERTENCIA]${NC} $1"; }
-print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-print_header() { echo -e "${CYAN}$1${NC}"; }
+# Funciones de utilidad para la interfaz
+print_banner() {
+    clear
+    echo -e "${COLORS[CYAN]}${COLORS[BOLD]}"
+    cat << 'EOF'
+    ╔══════════════════════════════════════════════════════════════╗
+    ║                                                              ║
+    ║              🚀 ARCH DESKTOP WIZARD v2.0 🚀                ║
+    ║                                                              ║
+    ║        Instalador Visual de Entornos de Escritorio          ║
+    ║                                                              ║
+    ╚══════════════════════════════════════════════════════════════╝
+EOF
+    echo -e "${COLORS[NC]}"
+}
 
-# Verificar si el usuario es root
-check_root() {
-    if [[ $EUID -eq 0 ]]; then
-        print_error "No ejecutes este script como root. Usa un usuario normal con sudo."
-        exit 1
+print_section() {
+    echo -e "\n${COLORS[BLUE]}${COLORS[BOLD]}▶ $1${COLORS[NC]}"
+    echo -e "${COLORS[GRAY]}${'═'*60}${COLORS[NC]}"
+}
+
+print_option() {
+    local num="$1"
+    local name="$2"
+    local desc="$3"
+    local status="$4"
+    
+    if [[ "$status" == "selected" ]]; then
+        echo -e "${COLORS[GREEN]}[✓] ${COLORS[WHITE]}$num) ${COLORS[BOLD]}$name${COLORS[NC]} ${COLORS[GREEN]}$desc${COLORS[NC]}"
+    else
+        echo -e "${COLORS[GRAY]}[ ] ${COLORS[WHITE]}$num) ${COLORS[BOLD]}$name${COLORS[NC]} ${COLORS[DIM]}$desc${COLORS[NC]}"
     fi
 }
 
-# Actualizar sistema
-update_system() {
-    print_status "Actualizando el sistema..."
-    sudo pacman -Syu --noconfirm
-    print_status "Sistema actualizado correctamente"
+print_success() {
+    echo -e "${COLORS[GREEN]}${COLORS[BOLD]}✓${COLORS[NC]} $1"
 }
 
-# Instalar drivers de video
-install_video_drivers() {
-    print_header "=== INSTALACIÓN DE DRIVERS DE VIDEO ==="
-    echo "1) Intel"
-    echo "2) NVIDIA (propietario)"
-    echo "3) NVIDIA (código abierto - nouveau)"
-    echo "4) AMD"
-    echo "5) VirtualBox"
-    echo "6) VMware"
-    echo "7) Omitir"
-    echo
+print_warning() {
+    echo -e "${COLORS[YELLOW]}${COLORS[BOLD]}⚠${COLORS[NC]} $1"
+}
+
+print_error() {
+    echo -e "${COLORS[RED]}${COLORS[BOLD]}✗${COLORS[NC]} $1"
+}
+
+print_info() {
+    echo -e "${COLORS[BLUE]}${COLORS[BOLD]}ℹ${COLORS[NC]} $1"
+}
+
+# Función para mostrar progreso
+show_progress() {
+    local current=$1
+    local total=$2
+    local desc="$3"
+    local percent=$((current * 100 / total))
+    local filled=$((percent / 2))
+    local empty=$((50 - filled))
     
-    read -p "Selecciona tu tarjeta gráfica (1-7): " gpu_choice
+    printf "\r${COLORS[BLUE]}["
+    printf "%${filled}s" | tr ' ' '█'
+    printf "%${empty}s" | tr ' ' '░'
+    printf "] %d%% - %s${COLORS[NC]}" "$percent" "$desc"
     
-    case $gpu_choice in
-        1)
-            print_status "Instalando drivers Intel..."
-            sudo pacman -S --noconfirm xf86-video-intel vulkan-intel
+    if [ $current -eq $total ]; then
+        echo
+    fi
+}
+
+# Verificar requisitos del sistema
+check_requirements() {
+    print_section "VERIFICANDO REQUISITOS DEL SISTEMA"
+    
+    # Verificar si es Arch Linux
+    if ! grep -q "Arch Linux" /etc/os-release 2>/dev/null; then
+        print_error "Este script está diseñado para Arch Linux"
+        exit 1
+    fi
+    
+    # Verificar conexión a internet
+    if ! ping -c 1 google.com &> /dev/null; then
+        print_error "Se requiere conexión a internet"
+        exit 1
+    fi
+    
+    # Verificar permisos sudo
+    if ! sudo -n true 2>/dev/null; then
+        print_error "Se requieren permisos sudo"
+        exit 1
+    fi
+    
+    print_success "Todos los requisitos verificados"
+    sleep 1
+}
+
+# Configuración inicial del sistema
+system_setup() {
+    print_section "CONFIGURACIÓN INICIAL DEL SISTEMA"
+    
+    # Habilitar multilib si no está habilitado
+    if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
+        print_info "Habilitando repositorio multilib..."
+        sudo sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf
+    fi
+    
+    # Actualizar sistema
+    print_info "Actualizando sistema y base de datos de paquetes..."
+    {
+        sudo pacman -Syu --noconfirm
+        sudo pacman -S --needed --noconfirm reflector
+        sudo reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+    } >> "$INSTALL_LOG" 2>&1
+    
+    print_success "Sistema actualizado correctamente"
+}
+
+# Selección de drivers gráficos
+select_graphics_driver() {
+    print_banner
+    print_section "SELECCIÓN DE DRIVERS GRÁFICOS"
+    
+    echo -e "${COLORS[WHITE]}Selecciona tu tarjeta gráfica:${COLORS[NC]}\n"
+    
+    print_option "1" "Intel Graphics" "- Gráficos integrados Intel"
+    print_option "2" "NVIDIA (Propietario)" "- Drivers oficiales NVIDIA"
+    print_option "3" "NVIDIA (Nouveau)" "- Drivers libres para NVIDIA"
+    print_option "4" "AMD/ATI" "- Gráficos AMD Radeon"
+    print_option "5" "VirtualBox" "- Máquina virtual VirtualBox"
+    print_option "6" "VMware" "- Máquina virtual VMware"
+    print_option "7" "Genérico" "- Drivers básicos VESA"
+    
+    echo -e "\n${COLORS[YELLOW]}Tip: Si no estás seguro, selecciona 'Genérico'${COLORS[NC]}"
+    
+    while true; do
+        echo -ne "\n${COLORS[WHITE]}Tu elección [1-7]: ${COLORS[NC]}"
+        read -r choice
+        
+        case $choice in
+            1) SELECTED_DRIVERS="intel"; break ;;
+            2) SELECTED_DRIVERS="nvidia"; break ;;
+            3) SELECTED_DRIVERS="nouveau"; break ;;
+            4) SELECTED_DRIVERS="amd"; break ;;
+            5) SELECTED_DRIVERS="virtualbox"; break ;;
+            6) SELECTED_DRIVERS="vmware"; break ;;
+            7) SELECTED_DRIVERS="generic"; break ;;
+            *) print_error "Opción inválida. Intenta de nuevo." ;;
+        esac
+    done
+    
+    print_success "Driver seleccionado: $SELECTED_DRIVERS"
+    sleep 1
+}
+
+# Instalación de drivers gráficos
+install_graphics_drivers() {
+    print_section "INSTALANDO DRIVERS GRÁFICOS"
+    
+    local packages=""
+    
+    case $SELECTED_DRIVERS in
+        intel)
+            packages="xf86-video-intel mesa lib32-mesa vulkan-intel lib32-vulkan-intel"
             ;;
-        2)
-            print_status "Instalando drivers NVIDIA propietarios..."
-            sudo pacman -S --noconfirm nvidia nvidia-utils nvidia-settings
+        nvidia)
+            packages="nvidia nvidia-utils lib32-nvidia-utils nvidia-settings"
             ;;
-        3)
-            print_status "Instalando drivers NVIDIA código abierto..."
-            sudo pacman -S --noconfirm xf86-video-nouveau
+        nouveau)
+            packages="xf86-video-nouveau mesa lib32-mesa"
             ;;
-        4)
-            print_status "Instalando drivers AMD..."
-            sudo pacman -S --noconfirm xf86-video-amdgpu vulkan-radeon
+        amd)
+            packages="xf86-video-amdgpu mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon"
             ;;
-        5)
-            print_status "Instalando drivers VirtualBox..."
-            sudo pacman -S --noconfirm virtualbox-guest-utils xf86-video-vmware
+        virtualbox)
+            packages="virtualbox-guest-utils virtualbox-guest-modules-arch"
             sudo systemctl enable vboxservice
             ;;
-        6)
-            print_status "Instalando drivers VMware..."
-            sudo pacman -S --noconfirm xf86-video-vmware xf86-input-vmmouse
+        vmware)
+            packages="xf86-video-vmware xf86-input-vmmouse open-vm-tools"
+            sudo systemctl enable vmtoolsd
             ;;
-        7)
-            print_status "Omitiendo instalación de drivers de video"
-            ;;
-        *)
-            print_warning "Opción inválida, omitiendo drivers de video"
+        generic)
+            packages="xf86-video-vesa mesa"
             ;;
     esac
-}
-
-# Instalar servidor X y utilidades básicas
-install_xorg() {
-    print_status "Instalando servidor X y utilidades básicas..."
-    sudo pacman -S --noconfirm xorg-server xorg-xinit xorg-xkill xorg-xrandr \
-        xorg-xdpyinfo xorg-xsetroot mesa ttf-dejavu ttf-liberation \
-        noto-fonts firefox chromium git wget curl unzip zip p7zip \
-        htop neofetch tree file-roller
-    print_status "Servidor X instalado correctamente"
-}
-
-# Función para instalar GNOME
-install_gnome() {
-    print_status "Instalando GNOME..."
-    sudo pacman -S --noconfirm gnome gnome-tweaks gdm
-    sudo systemctl enable gdm
-    print_status "GNOME instalado correctamente"
-}
-
-# Función para instalar KDE Plasma
-install_kde() {
-    print_status "Instalando KDE Plasma..."
-    sudo pacman -S --noconfirm plasma kde-applications sddm
-    sudo systemctl enable sddm
-    print_status "KDE Plasma instalado correctamente"
-}
-
-# Función para instalar XFCE
-install_xfce() {
-    print_status "Instalando XFCE..."
-    sudo pacman -S --noconfirm xfce4 xfce4-goodies lightdm lightdm-gtk-greeter
-    sudo systemctl enable lightdm
-    print_status "XFCE instalado correctamente"
-}
-
-# Función para instalar MATE
-install_mate() {
-    print_status "Instalando MATE..."
-    sudo pacman -S --noconfirm mate mate-extra lightdm lightdm-gtk-greeter
-    sudo systemctl enable lightdm
-    print_status "MATE instalado correctamente"
-}
-
-# Función para instalar Cinnamon
-install_cinnamon() {
-    print_status "Instalando Cinnamon..."
-    sudo pacman -S --noconfirm cinnamon lightdm lightdm-gtk-greeter
-    sudo systemctl enable lightdm
-    print_status "Cinnamon instalado correctamente"
-}
-
-# Función para instalar LXDE
-install_lxde() {
-    print_status "Instalando LXDE..."
-    sudo pacman -S --noconfirm lxde-gtk3 lightdm lightdm-gtk-greeter
-    sudo systemctl enable lightdm
-    print_status "LXDE instalado correctamente"
-}
-
-# Función para instalar LXQt
-install_lxqt() {
-    print_status "Instalando LXQt..."
-    sudo pacman -S --noconfirm lxqt sddm
-    sudo systemctl enable sddm
-    print_status "LXQt instalado correctamente"
-}
-
-# Función para instalar i3
-install_i3() {
-    print_status "Instalando i3..."
-    sudo pacman -S --noconfirm i3-wm i3status i3lock dmenu xterm \
-        feh nitrogen picom thunar
     
-    # Crear configuración básica de i3
-    mkdir -p ~/.config/i3
-    cat << 'EOF' > ~/.config/i3/config
-# i3 config file (v4)
-set $mod Mod4
+    if [ -n "$packages" ]; then
+        print_info "Instalando: $packages"
+        sudo pacman -S --needed --noconfirm $packages >> "$INSTALL_LOG" 2>&1
+        print_success "Drivers gráficos instalados"
+    fi
+}
 
-# Font for window titles
+# Configuración de audio
+setup_audio() {
+    print_banner
+    print_section "CONFIGURACIÓN DE SISTEMA DE AUDIO"
+    
+    echo -e "${COLORS[WHITE]}Selecciona el sistema de audio:${COLORS[NC]}\n"
+    
+    print_option "1" "PipeWire" "- Sistema moderno (recomendado)"
+    print_option "2" "PulseAudio" "- Sistema tradicional"
+    print_option "3" "Omitir" "- No instalar audio"
+    
+    while true; do
+        echo -ne "\n${COLORS[WHITE]}Tu elección [1-3]: ${COLORS[NC]}"
+        read -r choice
+        
+        case $choice in
+            1) 
+                AUDIO_SYSTEM="pipewire"
+                install_pipewire
+                break 
+                ;;
+            2) 
+                AUDIO_SYSTEM="pulseaudio"
+                install_pulseaudio
+                break 
+                ;;
+            3) 
+                AUDIO_SYSTEM="none"
+                print_info "Omitiendo instalación de audio"
+                break 
+                ;;
+            *) print_error "Opción inválida. Intenta de nuevo." ;;
+        esac
+    done
+}
+
+install_pipewire() {
+    print_info "Instalando PipeWire..."
+    sudo pacman -S --needed --noconfirm \
+        pipewire pipewire-alsa pipewire-pulse pipewire-jack \
+        wireplumber pavucontrol helvum >> "$INSTALL_LOG" 2>&1
+    
+    # Habilitar servicios para el usuario actual
+    systemctl --user enable pipewire pipewire-pulse 2>/dev/null || true
+    
+    print_success "PipeWire instalado correctamente"
+}
+
+install_pulseaudio() {
+    print_info "Instalando PulseAudio..."
+    sudo pacman -S --needed --noconfirm \
+        pulseaudio pulseaudio-alsa pavucontrol >> "$INSTALL_LOG" 2>&1
+    print_success "PulseAudio instalado correctamente"
+}
+
+# Instalación de componentes base
+install_base_components() {
+    print_section "INSTALANDO COMPONENTES BASE"
+    
+    local base_packages=(
+        "xorg-server" "xorg-xinit" "xorg-xrandr" "xorg-xsetroot"
+        "mesa" "ttf-dejavu" "ttf-liberation" "noto-fonts"
+        "firefox" "file-roller" "gvfs" "udisks2"
+        "networkmanager" "network-manager-applet"
+        "git" "wget" "curl" "unzip" "htop" "neofetch"
+    )
+    
+    for i in "${!base_packages[@]}"; do
+        show_progress $((i+1)) ${#base_packages[@]} "Instalando ${base_packages[i]}"
+        sudo pacman -S --needed --noconfirm "${base_packages[i]}" >> "$INSTALL_LOG" 2>&1
+        sleep 0.1
+    done
+    
+    print_success "Componentes base instalados"
+}
+
+# Definición de escritorios disponibles
+declare -A DESKTOPS=(
+    [gnome]="GNOME|Escritorio moderno y elegante|gnome gnome-tweaks|gdm"
+    [kde]="KDE Plasma|Potente y personalizable|plasma kde-applications|sddm"
+    [xfce]="XFCE|Ligero y funcional|xfce4 xfce4-goodies|lightdm lightdm-gtk-greeter"
+    [mate]="MATE|Tradicional y estable|mate mate-extra|lightdm lightdm-gtk-greeter"
+    [cinnamon]="Cinnamon|Elegante y familiar|cinnamon|lightdm lightdm-gtk-greeter"
+    [budgie]="Budgie|Moderno y minimalista|budgie-desktop|lightdm lightdm-gtk-greeter"
+    [lxqt]="LXQt|Ligero Qt|lxqt|sddm"
+    [deepin]="Deepin|Hermoso y elegante|deepin deepin-extra|lightdm lightdm-gtk-greeter"
+    [i3]="i3 WM|Gestor de ventanas tiling|i3-wm i3status i3lock dmenu|none"
+    [awesome]="Awesome WM|Dinámico y configurable|awesome|none"
+    [bspwm]="Bspwm|Tiling binario|bspwm sxhkd|none"
+    [qtile]="Qtile|Tiling en Python|qtile|none"
+)
+
+# Mostrar selección de escritorios
+show_desktop_selection() {
+    print_banner
+    print_section "SELECCIÓN DE ENTORNOS DE ESCRITORIO"
+    
+    echo -e "${COLORS[WHITE]}Escritorios disponibles:${COLORS[NC]}\n"
+    
+    echo -e "${COLORS[PURPLE]}${COLORS[BOLD]}ENTORNOS COMPLETOS:${COLORS[NC]}"
+    local desktop_keys=("gnome" "kde" "xfce" "mate" "cinnamon" "budgie" "lxqt" "deepin")
+    local num=1
+    
+    for key in "${desktop_keys[@]}"; do
+        IFS='|' read -r name desc packages dm <<< "${DESKTOPS[$key]}"
+        local status=""
+        [[ " ${SELECTED_DESKTOPS[@]} " =~ " $key " ]] && status="selected"
+        print_option "$num" "$name" "- $desc" "$status"
+        ((num++))
+    done
+    
+    echo -e "\n${COLORS[PURPLE]}${COLORS[BOLD]}GESTORES DE VENTANAS:${COLORS[NC]}"
+    local wm_keys=("i3" "awesome" "bspwm" "qtile")
+    
+    for key in "${wm_keys[@]}"; do
+        IFS='|' read -r name desc packages dm <<< "${DESKTOPS[$key]}"
+        local status=""
+        [[ " ${SELECTED_DESKTOPS[@]} " =~ " $key " ]] && status="selected"
+        print_option "$num" "$name" "- $desc" "$status"
+        ((num++))
+    done
+    
+    echo -e "\n${COLORS[GRAY]}${COLORS[BOLD]}ACCIONES:${COLORS[NC]}"
+    print_option "99" "Continuar" "- Proceder con la instalación"
+    print_option "0" "Salir" "- Cancelar instalación"
+}
+
+# Manejar selección de escritorios
+handle_desktop_selection() {
+    while true; do
+        show_desktop_selection
+        
+        if [ ${#SELECTED_DESKTOPS[@]} -gt 0 ]; then
+            echo -e "\n${COLORS[GREEN]}${COLORS[BOLD]}Seleccionados: ${SELECTED_DESKTOPS[*]}${COLORS[NC]}"
+        fi
+        
+        echo -ne "\n${COLORS[WHITE]}Selecciona un escritorio [1-12, 99=continuar, 0=salir]: ${COLORS[NC]}"
+        read -r choice
+        
+        case $choice in
+            1) toggle_desktop "gnome" ;;
+            2) toggle_desktop "kde" ;;
+            3) toggle_desktop "xfce" ;;
+            4) toggle_desktop "mate" ;;
+            5) toggle_desktop "cinnamon" ;;
+            6) toggle_desktop "budgie" ;;
+            7) toggle_desktop "lxqt" ;;
+            8) toggle_desktop "deepin" ;;
+            9) toggle_desktop "i3" ;;
+            10) toggle_desktop "awesome" ;;
+            11) toggle_desktop "bspwm" ;;
+            12) toggle_desktop "qtile" ;;
+            99) 
+                if [ ${#SELECTED_DESKTOPS[@]} -eq 0 ]; then
+                    print_error "Debes seleccionar al menos un escritorio"
+                    sleep 2
+                else
+                    break
+                fi
+                ;;
+            0) 
+                print_info "Instalación cancelada"
+                exit 0 
+                ;;
+            *) 
+                print_error "Opción inválida"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# Alternar selección de escritorio
+toggle_desktop() {
+    local desktop="$1"
+    
+    if [[ " ${SELECTED_DESKTOPS[@]} " =~ " $desktop " ]]; then
+        # Remover de la selección
+        SELECTED_DESKTOPS=("${SELECTED_DESKTOPS[@]/$desktop}")
+        # Limpiar elementos vacíos
+        local temp_array=()
+        for item in "${SELECTED_DESKTOPS[@]}"; do
+            [[ -n "$item" ]] && temp_array+=("$item")
+        done
+        SELECTED_DESKTOPS=("${temp_array[@]}")
+    else
+        # Agregar a la selección
+        SELECTED_DESKTOPS+=("$desktop")
+    fi
+}
+
+# Instalación de escritorios seleccionados
+install_selected_desktops() {
+    print_section "INSTALANDO ESCRITORIOS SELECCIONADOS"
+    
+    local display_managers=()
+    local total_desktops=${#SELECTED_DESKTOPS[@]}
+    
+    for i in "${!SELECTED_DESKTOPS[@]}"; do
+        local desktop="${SELECTED_DESKTOPS[i]}"
+        IFS='|' read -r name desc packages dm <<< "${DESKTOPS[$desktop]}"
+        
+        show_progress $((i+1)) $total_desktops "Instalando $name"
+        
+        # Instalar paquetes del escritorio
+        sudo pacman -S --needed --noconfirm $packages >> "$INSTALL_LOG" 2>&1
+        
+        # Agregar display manager a la lista si no es 'none'
+        if [[ "$dm" != "none" && ! " ${display_managers[@]} " =~ " $dm " ]]; then
+            display_managers+=("$dm")
+        fi
+        
+        # Configuraciones específicas
+        case $desktop in
+            i3) setup_i3_config ;;
+            bspwm) setup_bspwm_config ;;
+            qtile) setup_qtile_config ;;
+        esac
+        
+        sleep 0.5
+    done
+    
+    # Configurar display manager
+    if [ ${#display_managers[@]} -gt 0 ]; then
+        setup_display_manager "${display_managers[0]}"
+    fi
+    
+    print_success "Todos los escritorios instalados correctamente"
+}
+
+# Configuración específica para i3
+setup_i3_config() {
+    mkdir -p ~/.config/i3
+    cat > ~/.config/i3/config << 'EOF'
+# i3 config file
+set $mod Mod4
 font pango:DejaVu Sans Mono 8
 
-# Use Mouse+$mod to drag floating windows
-floating_modifier $mod
+# Autostart
+exec --no-startup-id nm-applet
 
-# Start a terminal
-bindsym $mod+Return exec xterm
-
-# Kill focused window
+# Keybindings
+bindsym $mod+Return exec i3-sensible-terminal
 bindsym $mod+Shift+q kill
-
-# Start dmenu
 bindsym $mod+d exec dmenu_run
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+r restart
+bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'Exit i3?' -b 'Yes' 'i3-msg exit'"
 
-# Change focus
+# Window management
 bindsym $mod+j focus left
 bindsym $mod+k focus down
 bindsym $mod+l focus up
 bindsym $mod+semicolon focus right
 
-# Move focused window
 bindsym $mod+Shift+j move left
 bindsym $mod+Shift+k move down
 bindsym $mod+Shift+l move up
 bindsym $mod+Shift+semicolon move right
-
-# Split orientation
-bindsym $mod+h split h
-bindsym $mod+v split v
-
-# Enter fullscreen mode
-bindsym $mod+f fullscreen toggle
-
-# Restart i3 inplace
-bindsym $mod+Shift+r restart
-
-# Exit i3
-bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'Exit i3?' -b 'Yes' 'i3-msg exit'"
 
 # Workspaces
 bindsym $mod+1 workspace 1
@@ -209,50 +483,29 @@ bindsym $mod+3 workspace 3
 bindsym $mod+4 workspace 4
 bindsym $mod+5 workspace 5
 
-# Move to workspace
 bindsym $mod+Shift+1 move container to workspace 1
 bindsym $mod+Shift+2 move container to workspace 2
 bindsym $mod+Shift+3 move container to workspace 3
 bindsym $mod+Shift+4 move container to workspace 4
 bindsym $mod+Shift+5 move container to workspace 5
 
+# Layout
+bindsym $mod+h split h
+bindsym $mod+v split v
+bindsym $mod+f fullscreen toggle
+
 # Status bar
 bar {
     status_command i3status
 }
 EOF
-    
-    print_status "i3 instalado correctamente"
-    print_status "Para iniciar i3, agrega 'exec i3' a ~/.xinitrc y usa 'startx'"
 }
 
-# Función para instalar Awesome
-install_awesome() {
-    print_status "Instalando Awesome WM..."
-    sudo pacman -S --noconfirm awesome xterm
-    print_status "Awesome WM instalado correctamente"
-    print_status "Para iniciar Awesome, agrega 'exec awesome' a ~/.xinitrc y usa 'startx'"
-}
-
-# Función para instalar Openbox
-install_openbox() {
-    print_status "Instalando Openbox..."
-    sudo pacman -S --noconfirm openbox openbox-themes obconf \
-        tint2 nitrogen thunar xterm
-    print_status "Openbox instalado correctamente"
-    print_status "Para iniciar Openbox, agrega 'exec openbox-session' a ~/.xinitrc y usa 'startx'"
-}
-
-# Función para instalar Bspwm
-install_bspwm() {
-    print_status "Instalando Bspwm..."
-    sudo pacman -S --noconfirm bspwm sxhkd xterm dmenu
-    
-    # Crear directorios de configuración
+# Configuración específica para Bspwm
+setup_bspwm_config() {
     mkdir -p ~/.config/bspwm ~/.config/sxhkd
     
-    # Configuración básica de bspwm
-    cat << 'EOF' > ~/.config/bspwm/bspwmrc
+    cat > ~/.config/bspwm/bspwmrc << 'EOF'
 #!/bin/sh
 sxhkd &
 bspc monitor -d I II III IV V
@@ -263,208 +516,187 @@ bspc config borderless_monocle   true
 bspc config gapless_monocle      true
 EOF
     
-    # Configuración básica de sxhkd
-    cat << 'EOF' > ~/.config/sxhkd/sxhkdrc
-# Terminal
+    cat > ~/.config/sxhkd/sxhkdrc << 'EOF'
 super + Return
-    xterm
+    alacritty
 
-# Program launcher
 super + d
     dmenu_run
 
-# Close window
 super + shift + q
     bspc node -c
 
-# Quit bspwm
 super + shift + e
     bspc quit
 EOF
     
     chmod +x ~/.config/bspwm/bspwmrc
+}
+
+# Configuración específica para Qtile
+setup_qtile_config() {
+    mkdir -p ~/.config/qtile
+    cat > ~/.config/qtile/config.py << 'EOF'
+from libqtile import bar, layout, widget
+from libqtile.config import Click, Drag, Group, Key, Match, Screen
+from libqtile.lazy import lazy
+
+mod = "mod4"
+terminal = "alacritty"
+
+keys = [
+    Key([mod], "Return", lazy.spawn(terminal)),
+    Key([mod], "d", lazy.spawn("dmenu_run")),
+    Key([mod, "shift"], "q", lazy.window.kill()),
+    Key([mod, "shift"], "r", lazy.restart()),
+    Key([mod, "shift"], "e", lazy.shutdown()),
+]
+
+groups = [Group(i) for i in "12345"]
+
+for i in groups:
+    keys.extend([
+        Key([mod], i.name, lazy.group[i.name].toscreen()),
+        Key([mod, "shift"], i.name, lazy.window.togroup(i.name)),
+    ])
+
+layouts = [
+    layout.Columns(border_focus_stack=["#d75f5f", "#8f3d3d"], border_width=4),
+    layout.Max(),
+]
+
+screens = [
+    Screen(
+        bottom=bar.Bar([
+            widget.CurrentLayout(),
+            widget.GroupBox(),
+            widget.Prompt(),
+            widget.WindowName(),
+            widget.Systray(),
+            widget.Clock(format="%Y-%m-%d %a %I:%M %p"),
+        ], 24),
+    ),
+]
+EOF
+}
+
+# Configurar display manager
+setup_display_manager() {
+    local dm="$1"
     
-    print_status "Bspwm instalado correctamente"
-    print_status "Para iniciar Bspwm, agrega 'exec bspwm' a ~/.xinitrc y usa 'startx'"
-}
-
-# Mostrar menú de interfaces disponibles
-show_gui_menu() {
-    clear
-    print_header "================================================================"
-    print_header "        INSTALADOR DE INTERFACES GRÁFICAS - ARCH LINUX"
-    print_header "================================================================"
-    echo
-    echo -e "${PURPLE}ENTORNOS DE ESCRITORIO COMPLETOS:${NC}"
-    echo "1)  GNOME         - Moderno y elegante"
-    echo "2)  KDE Plasma    - Potente y personalizable"
-    echo "3)  XFCE          - Ligero y funcional"
-    echo "4)  MATE          - Tradicional y estable"
-    echo "5)  Cinnamon      - Elegante y familiar"
-    echo "6)  LXDE          - Muy ligero"
-    echo "7)  LXQt          - Ligero y moderno"
-    echo
-    echo -e "${PURPLE}GESTORES DE VENTANAS:${NC}"
-    echo "8)  i3            - Tiling, minimalista"
-    echo "9)  Awesome       - Dinámico y configurable"
-    echo "10) Openbox       - Ligero y personalizable"
-    echo "11) Bspwm         - Tiling, binario"
-    echo
-    echo "0)  Terminar instalación"
-    echo
-}
-
-# Procesar selección del usuario
-process_selection() {
-    case $1 in
-        1) install_gnome ;;
-        2) install_kde ;;
-        3) install_xfce ;;
-        4) install_mate ;;
-        5) install_cinnamon ;;
-        6) install_lxde ;;
-        7) install_lxqt ;;
-        8) install_i3 ;;
-        9) install_awesome ;;
-        10) install_openbox ;;
-        11) install_bspwm ;;
-        0) return 1 ;;
-        *) print_warning "Opción inválida" ;;
+    print_info "Configurando display manager: $dm"
+    
+    case $dm in
+        gdm)
+            sudo systemctl enable gdm
+            ;;
+        sddm)
+            sudo systemctl enable sddm
+            ;;
+        "lightdm lightdm-gtk-greeter")
+            sudo systemctl enable lightdm
+            ;;
     esac
-    return 0
 }
 
-# Configurar audio
-setup_audio() {
-    print_status "¿Deseas instalar el sistema de audio? (y/N)"
-    read -p "> " install_audio
+# Instalación de aplicaciones adicionales
+install_additional_apps() {
+    print_banner
+    print_section "APLICACIONES ADICIONALES"
     
-    if [[ $install_audio =~ ^[Yy]$ ]]; then
-        print_status "Instalando PipeWire (sistema de audio moderno)..."
-        sudo pacman -S --noconfirm pipewire pipewire-alsa pipewire-pulse \
-            pipewire-jack wireplumber pavucontrol
-        
-        # Habilitar servicios de audio para el usuario
-        systemctl --user enable pipewire
-        systemctl --user enable pipewire-pulse
-        
-        print_status "Sistema de audio instalado correctamente"
-    fi
+    echo -e "${COLORS[WHITE]}¿Deseas instalar aplicaciones adicionales?${COLORS[NC]}\n"
+    
+    print_option "1" "Paquete Básico" "- Editores, multimedia básico"
+    print_option "2" "Paquete Completo" "- Oficina, multimedia, desarrollo"
+    print_option "3" "Personalizar" "- Seleccionar individualmente"
+    print_option "4" "Omitir" "- No instalar aplicaciones extra"
+    
+    echo -ne "\n${COLORS[WHITE]}Tu elección [1-4]: ${COLORS[NC]}"
+    read -r choice
+    
+    case $choice in
+        1) install_basic_apps ;;
+        2) install_complete_apps ;;
+        3) install_custom_apps ;;
+        4) print_info "Omitiendo aplicaciones adicionales" ;;
+        *) print_error "Opción inválida, omitiendo aplicaciones" ;;
+    esac
 }
 
-# Instalar fuentes adicionales
-install_fonts() {
-    print_status "¿Deseas instalar fuentes adicionales? (y/N)"
-    read -p "> " install_extra_fonts
+install_basic_apps() {
+    print_info "Instalando paquete básico..."
+    local apps="gedit mousepad vlc gimp libreoffice-fresh thunderbird"
+    sudo pacman -S --needed --noconfirm $apps >> "$INSTALL_LOG" 2>&1
+    print_success "Paquete básico instalado"
+}
+
+install_complete_apps() {
+    print_info "Instalando paquete completo..."
+    local apps="gedit mousepad code vlc gimp inkscape blender libreoffice-fresh thunderbird discord steam obs-studio"
+    sudo pacman -S --needed --noconfirm $apps >> "$INSTALL_LOG" 2>&1
+    print_success "Paquete completo instalado"
+}
+
+install_custom_apps() {
+    print_info "Función de personalización pendiente de implementar"
+}
+
+# Resumen final
+show_final_summary() {
+    print_banner
+    print_section "RESUMEN DE INSTALACIÓN"
     
-    if [[ $install_extra_fonts =~ ^[Yy]$ ]]; then
-        print_status "Instalando fuentes adicionales..."
-        sudo pacman -S --noconfirm ttf-fira-code ttf-roboto ttf-opensans \
-            noto-fonts-emoji ttf-hack adobe-source-code-pro-fonts
-        print_status "Fuentes adicionales instaladas"
+    echo -e "${COLORS[GREEN]}${COLORS[BOLD]}✅ INSTALACIÓN COMPLETADA EXITOSAMENTE${COLORS[NC]}\n"
+    
+    echo -e "${COLORS[WHITE]}${COLORS[BOLD]}Configuración instalada:${COLORS[NC]}"
+    echo -e "  🖥️  Drivers gráficos: ${COLORS[CYAN]}$SELECTED_DRIVERS${COLORS[NC]}"
+    echo -e "  🔊  Sistema de audio: ${COLORS[CYAN]}$AUDIO_SYSTEM${COLORS[NC]}"
+    echo -e "  🖼️  Escritorios: ${COLORS[CYAN]}${SELECTED_DESKTOPS[*]}${COLORS[NC]}"
+    
+    echo -e "\n${COLORS[YELLOW]}${COLORS[BOLD]}PRÓXIMOS PASOS:${COLORS[NC]}"
+    echo -e "  1️⃣  Reinicia el sistema: ${COLORS[WHITE]}sudo reboot${COLORS[NC]}"
+    echo -e "  2️⃣  Selecciona tu escritorio favorito en el login"
+    echo -e "  3️⃣  Personaliza tu entorno según tus preferencias"
+    
+    echo -e "\n${COLORS[GRAY]}Log de instalación guardado en: $INSTALL_LOG${COLORS[NC]}"
+    
+    echo -ne "\n${COLORS[WHITE]}¿Deseas reiniciar ahora? [y/N]: ${COLORS[NC]}"
+    read -r reboot_choice
+    
+    if [[ $reboot_choice =~ ^[Yy]$ ]]; then
+        print_info "Reiniciando sistema..."
+        sudo reboot
+    else
+        print_success "¡Gracias por usar Arch Desktop Wizard!"
     fi
 }
 
 # Función principal
 main() {
-    check_root
-    
-    print_header "================================================================"
-    print_header "        INSTALADOR DE INTERFACES GRÁFICAS - ARCH LINUX"
-    print_header "================================================================"
-    echo
-    print_status "Este script te ayudará a instalar interfaces gráficas en Arch Linux"
-    print_status "Puedes instalar múltiples entornos si lo deseas"
-    echo
-    
-    read -p "¿Continuar? (y/N): " continue_install
-    if [[ ! $continue_install =~ ^[Yy]$ ]]; then
-        print_error "Instalación cancelada"
-        exit 0
+    # Verificar que no se ejecute como root
+    if [[ $EUID -eq 0 ]]; then
+        print_error "No ejecutes este script como root"
+        exit 1
     fi
     
-    # Actualizar sistema
-    update_system
+    # Crear log de instalación
+    touch "$INSTALL_LOG"
     
-    # Instalar drivers de video
-    install_video_drivers
+    # Flujo principal
+    print_banner
+    print_info "Iniciando Arch Desktop Wizard..."
+    sleep 2
     
-    # Instalar Xorg
-    install_xorg
-    
-    # Configurar audio
+    check_requirements
+    system_setup
+    select_graphics_driver
+    install_graphics_drivers
     setup_audio
-    
-    # Instalar fuentes adicionales
-    install_fonts
-    
-    # Menú de selección de interfaces
-    selected_interfaces=()
-    
-    while true; do
-        show_gui_menu
-        echo -e "${GREEN}Interfaces ya seleccionadas:${NC} ${selected_interfaces[*]}"
-        echo
-        read -p "Selecciona una interfaz (0 para terminar): " choice
-        
-        if [[ $choice -eq 0 ]]; then
-            break
-        fi
-        
-        if process_selection $choice; then
-            case $choice in
-                1) selected_interfaces+=("GNOME") ;;
-                2) selected_interfaces+=("KDE") ;;
-                3) selected_interfaces+=("XFCE") ;;
-                4) selected_interfaces+=("MATE") ;;
-                5) selected_interfaces+=("Cinnamon") ;;
-                6) selected_interfaces+=("LXDE") ;;
-                7) selected_interfaces+=("LXQt") ;;
-                8) selected_interfaces+=("i3") ;;
-                9) selected_interfaces+=("Awesome") ;;
-                10) selected_interfaces+=("Openbox") ;;
-                11) selected_interfaces+=("Bspwm") ;;
-            esac
-            
-            echo
-            print_status "Interfaz instalada correctamente!"
-            read -p "Presiona Enter para continuar..."
-        fi
-    done
-    
-    # Resumen final
-    echo
-    print_header "================================================================"
-    print_header "                    INSTALACIÓN COMPLETADA"
-    print_header "================================================================"
-    echo
-    
-    if [ ${#selected_interfaces[@]} -eq 0 ]; then
-        print_warning "No se instalaron interfaces gráficas"
-    else
-        print_status "Interfaces instaladas: ${selected_interfaces[*]}"
-        echo
-        print_status "PRÓXIMOS PASOS:"
-        
-        # Verificar si hay display manager instalado
-        if systemctl is-enabled gdm &>/dev/null || systemctl is-enabled sddm &>/dev/null || systemctl is-enabled lightdm &>/dev/null; then
-            echo "  1. Reinicia el sistema: sudo reboot"
-            echo "  2. El gestor de inicio gráfico se iniciará automáticamente"
-        else
-            echo "  1. Para gestores de ventanas (i3, Awesome, etc.):"
-            echo "     - Agrega 'exec [nombre-wm]' a ~/.xinitrc"
-            echo "     - Usa 'startx' para iniciar"
-            echo "  2. O instala un display manager:"
-            echo "     - sudo pacman -S lightdm lightdm-gtk-greeter"
-            echo "     - sudo systemctl enable lightdm"
-        fi
-        
-        echo "  3. Instala aplicaciones adicionales según necesites"
-        echo "  4. Configura tu entorno según tus preferencias"
-    fi
-    
-    echo
-    print_status "¡Gracias por usar el instalador de interfaces gráficas!"
+    install_base_components
+    handle_desktop_selection
+    install_selected_desktops
+    install_additional_apps
+    show_final_summary
 }
 
 # Ejecutar función principal
