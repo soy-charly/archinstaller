@@ -39,19 +39,53 @@ check_uefi() {
 configure_system() {
     echo -e "${BLUE}=== CONFIGURACIÓN DEL SISTEMA ===${NC}"
     
-    # Seleccionar disco
-    print_status "Discos disponibles:"
-    lsblk -d -o NAME,SIZE,MODEL
+    # Mostrar particiones disponibles
+    print_status "Particiones disponibles:"
+    lsblk -f
     echo
-    read -p "Ingresa el dispositivo a usar (ej: sda, nvme0n1): " DISK
-    DISK="/dev/$DISK"
     
-    if [ ! -b "$DISK" ]; then
-        print_error "El dispositivo $DISK no existe"
+    # Seleccionar partición EFI/boot
+    print_status "Selecciona la partición EFI/boot (debe ser FAT32, ~512MB):"
+    read -p "Partición EFI (ej: sda1, nvme0n1p1): " EFI_INPUT
+    EFI_PART="/dev/$EFI_INPUT"
+    
+    if [ ! -b "$EFI_PART" ]; then
+        print_error "La partición $EFI_PART no existe"
         exit 1
     fi
     
-    print_warning "Se formateará completamente $DISK"
+    # Seleccionar partición root
+    print_status "Selecciona la partición root (/):"
+    read -p "Partición root (ej: sda2, nvme0n1p2): " ROOT_INPUT
+    ROOT_PART="/dev/$ROOT_INPUT"
+    
+    if [ ! -b "$ROOT_PART" ]; then
+        print_error "La partición $ROOT_PART no existe"
+        exit 1
+    fi
+    
+    # Preguntar por partición swap (opcional)
+    read -p "¿Tienes partición swap? (y/N): " HAS_SWAP
+    if [[ $HAS_SWAP =~ ^[Yy]$ ]]; then
+        read -p "Partición swap (ej: sda3, nvme0n1p3): " SWAP_INPUT
+        SWAP_PART="/dev/$SWAP_INPUT"
+        
+        if [ ! -b "$SWAP_PART" ]; then
+            print_error "La partición $SWAP_PART no existe"
+            exit 1
+        fi
+    fi
+    
+    # Confirmar particiones seleccionadas
+    echo
+    print_warning "Particiones seleccionadas:"
+    echo "  EFI/boot: $EFI_PART"
+    echo "  Root (/): $ROOT_PART"
+    if [[ $HAS_SWAP =~ ^[Yy]$ ]]; then
+        echo "  Swap: $SWAP_PART"
+    fi
+    echo
+    print_warning "Las particiones seleccionadas serán FORMATEADAS"
     read -p "¿Continuar? (y/N): " confirm
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
         print_error "Instalación cancelada"
@@ -97,35 +131,31 @@ setup_network() {
     print_status "Reloj del sistema sincronizado"
 }
 
-# Particionar disco
-partition_disk() {
-    print_status "Particionando disco $DISK..."
+# Verificar y preparar particiones
+prepare_partitions() {
+    print_status "Verificando particiones seleccionadas..."
     
-    # Crear tabla de particiones GPT
-    parted -s "$DISK" mklabel gpt
-    
-    # Crear partición EFI (512MB)
-    parted -s "$DISK" mkpart primary fat32 1MiB 513MiB
-    parted -s "$DISK" set 1 esp on
-    
-    # Crear partición swap (4GB)
-    parted -s "$DISK" mkpart primary linux-swap 513MiB 4.5GiB
-    
-    # Crear partición root (resto del disco)
-    parted -s "$DISK" mkpart primary ext4 4.5GiB 100%
-    
-    print_status "Particiones creadas correctamente"
-    
-    # Determinar nombres de particiones
-    if [[ $DISK == *"nvme"* ]]; then
-        EFI_PART="${DISK}p1"
-        SWAP_PART="${DISK}p2"
-        ROOT_PART="${DISK}p3"
-    else
-        EFI_PART="${DISK}1"
-        SWAP_PART="${DISK}2"
-        ROOT_PART="${DISK}3"
+    # Verificar que la partición EFI no esté montada
+    if mountpoint -q "$EFI_PART" 2>/dev/null; then
+        print_status "Desmontando $EFI_PART..."
+        umount "$EFI_PART" || true
     fi
+    
+    # Verificar que la partición root no esté montada
+    if mountpoint -q "$ROOT_PART" 2>/dev/null; then
+        print_status "Desmontando $ROOT_PART..."
+        umount "$ROOT_PART" || true
+    fi
+    
+    # Verificar partición swap si existe
+    if [[ $HAS_SWAP =~ ^[Yy]$ ]]; then
+        if swapon --show | grep -q "$SWAP_PART"; then
+            print_status "Desactivando swap en $SWAP_PART..."
+            swapoff "$SWAP_PART" || true
+        fi
+    fi
+    
+    print_status "Particiones preparadas para formateo"
 }
 
 # Formatear particiones
@@ -133,16 +163,21 @@ format_partitions() {
     print_status "Formateando particiones..."
     
     # Formatear partición EFI
+    print_status "Formateando partición EFI $EFI_PART..."
     mkfs.fat -F32 "$EFI_PART"
     print_status "Partición EFI formateada"
     
-    # Formatear y activar swap
-    mkswap "$SWAP_PART"
-    swapon "$SWAP_PART"
-    print_status "Partición swap configurada"
+    # Formatear y activar swap si existe
+    if [[ $HAS_SWAP =~ ^[Yy]$ ]]; then
+        print_status "Formateando partición swap $SWAP_PART..."
+        mkswap "$SWAP_PART"
+        swapon "$SWAP_PART"
+        print_status "Partición swap configurada"
+    fi
     
     # Formatear partición root
-    mkfs.ext4 "$ROOT_PART"
+    print_status "Formateando partición root $ROOT_PART..."
+    mkfs.ext4 -F "$ROOT_PART"
     print_status "Partición root formateada"
 }
 
@@ -247,9 +282,18 @@ main() {
     echo -e "${BLUE}    INSTALADOR AUTOMÁTICO DE ARCH LINUX${NC}"
     echo -e "${BLUE}===============================================${NC}"
     echo
-    
-    print_warning "Este script instalará Arch Linux y formateará el disco seleccionado"
+    print_warning "Este script instalará Arch Linux en las particiones que selecciones"
+    print_warning "Las particiones seleccionadas serán formateadas"
     print_warning "Asegúrate de hacer respaldos antes de continuar"
+    echo
+    
+    print_status "REQUISITOS PREVIOS:"
+    echo "  - Debes tener particiones ya creadas:"
+    echo "    * Una partición EFI/boot (FAT32, ~512MB)"
+    echo "    * Una partición root (/) para el sistema"
+    echo "    * Opcionalmente una partición swap"
+    echo "  - Si no tienes particiones, usa herramientas como:"
+    echo "    * fdisk, cfdisk, parted, o gparted"
     echo
     
     read -p "¿Deseas continuar? (y/N): " continue_install
@@ -261,7 +305,7 @@ main() {
     check_uefi
     configure_system
     setup_network
-    partition_disk
+    prepare_partitions
     format_partitions
     mount_partitions
     install_base
@@ -281,6 +325,11 @@ main() {
     echo "  2. Actualizar sistema: sudo pacman -Syu"
     echo "  3. Instalar entorno de escritorio (opcional)"
     echo "  4. Configurar AUR helper como yay o paru"
+    echo
+    print_status "Si necesitas crear particiones antes de ejecutar este script:"
+    echo "  - Usa 'cfdisk /dev/sdX' para crear particiones de forma interactiva"
+    echo "  - O 'fdisk /dev/sdX' para el método tradicional"
+    echo "  - Recuerda crear: EFI (512MB, tipo EFI), Root (resto, tipo Linux), Swap (opcional)"
 }
 
 # Ejecutar función principal
