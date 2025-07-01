@@ -1,1 +1,2 @@
-structure
+# Archivos de configuración personal que no deben ser parte del repo
+config.sh

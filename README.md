@@ -1,88 +1,68 @@
-# **Instalación Personalizada de Arch Linux**
+# Instalador Asistido de Arch Linux
 
-Este proyecto ofrece un conjunto de scripts para realizar una instalación modular y personalizada de Arch Linux desde cero. Permite seleccionar particiones, configurar el sistema, instalar un gestor de arranque y añadir software adicional según las preferencias del usuario.
+Este proyecto proporciona un script para realizar una instalación semi-automatizada de Arch Linux en un sistema con UEFI. El script está diseñado para ser interactivo, solicitando al usuario la información necesaria para configurar el sistema.
 
-## **Estructura del Proyecto**
+**ADVERTENCIA:** Este script está diseñado para **BORRAR Y FORMATEAR** las particiones que selecciones. Todos los datos en esas particiones se perderán de forma permanente. Úsalo bajo tu propio riesgo.
 
-El proyecto está organizado en varios scripts, cada uno encargado de una etapa específica de la instalación:
+## Características
 
-```
-arch_install/
-├── particionado.sh   # Selección y montaje de particiones
-├── configuracion.sh  # Configuración del sistema (zona horaria, idioma, etc.)
-├── software.sh       # Instalación de software adicional (entorno gráfico, gestor de arranque)
-└── install.sh        # Script principal que orquesta la instalación
-```
+-   Instalación guiada paso a paso.
+-   Soporte para sistemas UEFI.
+-   Creación de usuario y contraseña.
+-   Establecimiento de la contraseña de `root`.
+-   Elección de entorno de escritorio (GNOME, KDE Plasma, XFCE) o instalación mínima.
+-   Opción para añadir paquetes de software adicionales.
+-   Configuración automática de `sudo`, `NetworkManager` y el gestor de arranque `GRUB`.
 
-### **Descripción de los Scripts**
+## Prerrequisitos
 
-- **`particionado.sh`**: Permite seleccionar y montar las particiones necesarias, como la raíz (`/`) y `/boot`. Verifica la existencia de las particiones antes de montarlas.
+1.  **Arrancar en modo Live de Arch Linux:** Descarga la [ISO oficial de Arch Linux](https://archlinux.org/download/), crea un USB booteable y arranca tu ordenador desde él.
+2.  **Conexión a Internet:** Asegúrate de tener una conexión a internet activa. Si usas Wi-Fi, puedes conectarte desde el entorno live con el comando `iwctl`.
+3.  **Particionar el disco:** Este script **NO** particiona el disco. Debes hacerlo tú manualmente antes de ejecutarlo. Usa `fdisk`, `cfdisk` o `gdisk`.
 
-- **`configuracion.sh`**: Configura aspectos básicos del sistema, como la zona horaria, el idioma, el nombre del host, la red y las contraseñas de los usuarios. También ofrece la opción de instalar y configurar NetworkManager.
+    Para un sistema UEFI (el estándar actual), necesitas como mínimo **dos** particiones:
+    -   Una partición **EFI System Partition (ESP)**:
+        -   Tamaño: ~550MB.
+        -   Tipo: `EFI System`.
+        -   Ejemplo: `/dev/sda1`, `/dev/nvme0n1p1`.
+    -   Una partición **Raíz (root)**:
+        -   Tamaño: El resto del espacio disponible.
+        -   Tipo: `Linux filesystem`.
+        -   Ejemplo: `/dev/sda2`, `/dev/nvme0n1p2`.
 
-- **`software.sh`**: Facilita la instalación de un gestor de arranque (GRUB o Syslinux) y software adicional, como entornos gráficos (GNOME, KDE, Xfce, i3) o paquetes esenciales.
+    Puedes verificar tus particiones con `lsblk` o `fdisk -l`. Anota los nombres exactos.
 
-- **`install.sh`**: Script principal que ejecuta los demás scripts en el orden adecuado. Es el punto de entrada para iniciar la instalación.
+## ¿Cómo usar?
 
-## **Requisitos Previos**
+1.  **Clonar o descargar el proyecto:**
+    Desde el entorno live de Arch Linux, clona este repositorio:
+    ```bash
+    pacman -Sy --noconfirm git
+    git clone <URL_DEL_REPOSITORIO> arch-installer
+    cd arch-installer
+    ```
+    O si has descargado los archivos manualmente, asegúrate de estar en el directorio correcto.
 
-- Arch Linux debe estar en modo Live con acceso a un terminal con privilegios `sudo`.
-- Conexión a Internet para descargar paquetes.
-- Conocimientos básicos sobre particionamiento de discos y configuración de sistemas Linux.
+2.  **Dar permisos de ejecución:**
+    Dale permisos de ejecución al script principal:
+    ```bash
+    chmod +x install.sh
+    ```
 
-## **Instrucciones de Uso**
+3.  **Ejecutar el instalador:**
+    Ejecuta el script y sigue las instrucciones que aparecerán en pantalla:
+    ```bash
+    ./install.sh
+    ```
+    El script te pedirá toda la información necesaria: particiones, nombres de usuario, contraseñas, etc.
 
-### 1. **Clonar o Descargar el Proyecto**
+4.  **Reiniciar:**
+    Una vez que el script finalice, te indicará que la instalación ha sido completada. En ese momento, puedes reiniciar tu sistema:
+    ```bash
+    reboot
+    ```
+    No olvides retirar el medio de instalación (USB). ¡Tu nuevo sistema Arch Linux debería arrancar!
 
-Clona este repositorio o descárgalo en tu máquina:
+## Contribuciones
 
-```bash
-git clone https://github.com/tu_usuario/arch_install.git
-cd arch_install
-```
-
-### 2. **Hacer los Scripts Ejecutables**
-
-Asegúrate de que los scripts tengan permisos de ejecución:
-
-```bash
-chmod +x particionado.sh configuracion.sh software.sh install.sh
-```
-
-### 3. **Ejecutar el Script Principal**
-
-Inicia la instalación ejecutando el script principal:
-
-```bash
-./install.sh
-```
-
-Este script guiará el proceso completo, incluyendo particionado, configuración del sistema e instalación de software.
-
-### 4. **Proceso de Instalación**
-
-El script principal realiza los siguientes pasos:
-
-1. **Particionado**: Selección y montaje de las particiones necesarias (`/` y `/boot`).
-2. **Configuración del Sistema**: Configuración de zona horaria, idioma, nombre del host, red y contraseñas.
-3. **Instalación de Software**: Instalación de un gestor de arranque y un entorno gráfico o gestor de ventanas.
-
-### 5. **Reiniciar el Sistema**
-
-Una vez completados todos los pasos, el script indicará que reinicies el sistema.
-
-## **Personalización**
-
-Puedes adaptar los scripts a tus necesidades específicas:
-
-- **Particionado**: Modifica los puntos de montaje o añade más particiones según sea necesario.
-- **Configuración del Sistema**: Agrega configuraciones adicionales, como usuarios, servicios o ajustes de red.
-- **Software Adicional**: Personaliza los paquetes a instalar o añade otros entornos de escritorio.
-
-## **Contribución**
-
-Si deseas mejorar o personalizar estos scripts, realiza un fork del proyecto y envía un pull request con tus cambios. Asegúrate de seguir las mejores prácticas y probar los scripts antes de enviarlos.
-
-## **Licencia**
-
-Este proyecto está bajo la licencia MIT. Consulta el archivo LICENSE en el repositorio para más detalles.
+Las contribuciones son bienvenidas. Si encuentras un error o tienes una idea para mejorar el script, por favor abre un *issue* o envía un *pull request*.
